@@ -50,7 +50,7 @@ extension AtmosphereArchive {
             uncompressed = archive
         }
 
-        let manifest: Manifest = try Ion(bytes: uncompressed[...]).decode(atomic: Manifest.self)
+        let manifest: Manifest = try .init(bytes: uncompressed[...]).decode(atomic: Manifest.self)
         guard manifest.version == Self.currentVersion else {
             throw Error.unsupportedVersion(manifest.version)
         }
@@ -187,7 +187,7 @@ extension AtmosphereArchive {
 
             let entry: PlanetEntry = .init(
                 name: config.name,
-                parameters: params,
+                parameters: parameters,
                 tables: .init(
                     transmittance: transmittanceDescriptor,
                     scattering: scatteringDescriptor,
