@@ -41,10 +41,12 @@ extension ScatteringTable {
         mie mie: Self
     ) -> Vector3<Double> {
         if n == 1 {
-            let rayleigh: Vector3<Double> =
-            rayleigh[r: r, μ: μ, μs: μs, ν: ν, intersectsGround: intersectsGround]
-            let mie: Vector3<Double> =
-            mie     [r: r, μ: μ, μs: μs, ν: ν, intersectsGround: intersectsGround]
+            let rayleigh: Vector3<Double> = rayleigh[
+                r: r, μ: μ, μs: μs, ν: ν, intersectsGround: intersectsGround
+            ]
+            let mie: Vector3<Double> = mie[
+                r: r, μ: μ, μs: μs, ν: ν, intersectsGround: intersectsGround
+            ]
             return rayleigh * Atmosphere.Rφ(ν) + mie * Atmosphere.Mφ(
                 ν,
                 g: self.atmosphere.mie.g
@@ -90,7 +92,7 @@ extension ScatteringTable {
             // Only theta-dependent
             cos.θ   = .cos(θ)
             sin.θ   = .sin(θ)
-            let intersectsGround: Bool   = self.atmosphere.intersectsGround(r: r, μ: cos.θ)
+            let intersectsGround: Bool = self.atmosphere.intersectsGround(r: r, μ: cos.θ)
             var ground: (
                 distance: Double,
                 albedo: Vector3<Double>,
@@ -129,7 +131,7 @@ extension ScatteringTable {
 
                 // Ground normal
                 let g: Vector3<Double>    = (zenith * r + ωi * ground.distance).normalized()
-                ground.irradiance   = irradiance[r: self.atmosphere.radius.bottom, μs: g <> ωs]
+                ground.irradiance = irradiance[r: self.atmosphere.radius.bottom, μs: g <> ωs]
 
                 // Incident radiance
                 let incident: Vector3<Double> =
@@ -147,7 +149,7 @@ extension ScatteringTable {
                 let anisotropic: (rayleigh: Vector3<Double>, mie: Vector3<Double>) = (
                     density.rayleigh * Atmosphere.Rφ(
                         νω
-                    )                           * self.atmosphere.rayleigh.scattering,
+                    ) * self.atmosphere.rayleigh.scattering,
                     density.mie      * Atmosphere.Mφ(
                         νω,
                         g: self.atmosphere.mie.g

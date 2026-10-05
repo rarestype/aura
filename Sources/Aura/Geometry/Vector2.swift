@@ -218,8 +218,8 @@ extension Vector2 where Scalar: FixedWidthInteger {
     }
 
     func roundedUp(exponent: Int) -> Vector2<Scalar> {
-        let mask: Scalar                 = .max &<< exponent
-        let truncated: SIMD2<Scalar>  = self.storage & mask
+        let mask: Scalar = .max &<< exponent
+        let truncated: SIMD2<Scalar> = self.storage & mask
         let carry: SIMD2<Scalar> =
         SIMD2<Scalar>.zero.replacing(with: 1 &<< exponent, where: self.storage & ~mask .!= 0)
         return .init(truncated &+ carry)

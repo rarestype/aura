@@ -527,8 +527,8 @@ extension Atmosphere {
         return .init(
             radius: (bottom: 6.36e6, top: 6.42e6, sun: 0.004675),
             rayleigh: (.init(rayleigh.layer), scattering: RGB.Rs),
-            mie: (.init(mie.layer),      scattering: RGB.Ms, extinction: RGB.Me, g: mie.g),
-            absorption: (.init(ozone.layer.0, ozone.layer.1),       extinction: RGB.Ae),
+            mie: (.init(mie.layer), scattering: RGB.Ms, extinction: RGB.Me, g: mie.g),
+            absorption: (.init(ozone.layer.0, ozone.layer.1), extinction: RGB.Ae),
             irradiance: RGB.I,
             ground: RGB.ground,
             μsmin: .cos(smax),
@@ -644,14 +644,14 @@ extension Atmosphere {
 
             // Update and accumulate
             for i: Int in texture.scattering.indices {
-                let (Δ, ν): (Vector3<Double>, Double)  = texture.scattering[i]
-                Δscattering.buffer[i]       = Δ
-                scattering[i]              += Δ / Self.Rφ(ν)
+                let (Δ, ν): (Vector3<Double>, Double) = texture.scattering[i]
+                Δscattering.buffer[i] = Δ
+                scattering[i] += Δ / Self.Rφ(ν)
             }
             for i: Int in texture.irradiance.indices {
-                let Δ: Vector3<Double>            = texture.irradiance[i]
-                Δirradiance.buffer[i]       = Δ
-                irradiance[i]              += Δ
+                let Δ: Vector3<Double> = texture.irradiance[i]
+                Δirradiance.buffer[i] = Δ
+                irradiance[i] += Δ
             }
         }
 
