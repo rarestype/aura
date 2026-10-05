@@ -1,3 +1,4 @@
+import ArgumentParser
 import Aura
 import CRC
 import SystemIO
@@ -8,14 +9,32 @@ import SystemPackage
     static let goldenIrradianceCRC32: UInt32 = 0xB193C82B
     static let goldenScatteringCRC32: UInt32 = 0xA71A2E72
 
-    static func main() throws {
+    @Option(
+        name: [.customLong("threads"), .customShort("j")],
+        help: "Number of threads to use for precomputation"
+    ) var threads: Int = 4
+}
+
+extension AuraGoldenTests: AsyncParsableCommand {
+    static var configuration: CommandConfiguration {
+        .init(
+            commandName: "AuraGoldenTests",
+            abstract: "Runs atmospheric precomputation and golden reference verification."
+        )
+    }
+
+    func run() async throws {
         print("1. Parsing Earth atmospheric configuration from embedded string...")
         let config: AtmosphereConfig = try AtmosphereConfig.parse(ion: Self.earthIon)
 
         print("2. Baking Earth atmosphere archive at detail 3...")
         let clock: ContinuousClock = .init()
         let start: ContinuousClock.Instant = clock.now
-        let archive: AtmosphereArchive = try .bake(configs: [config], detail: 3)
+        let archive: AtmosphereArchive = try await .bake(
+            configs: [config],
+            workers: self.threads,
+            detail: 3
+        )
         let elapsed: Duration = start.duration(to: clock.now)
         print("   Detail 3 precomputation finished in \(elapsed)!")
 
@@ -56,11 +75,11 @@ import SystemPackage
                Transmittance CRC32: 0x\(
                 String(transCRC, radix: 16, uppercase: true)
             ) [expected: 0x\(
-                String(goldenTransmittanceCRC32, radix: 16, uppercase: true)
+                String(Self.goldenTransmittanceCRC32, radix: 16, uppercase: true)
             )]
             """
         )
-        guard transCRC == goldenTransmittanceCRC32 else {
+        guard transCRC == Self.goldenTransmittanceCRC32 else {
             fatalError("Verification failed: Transmittance CRC32 mismatch!")
         }
 
@@ -83,11 +102,11 @@ import SystemPackage
                Irradiance    CRC32: 0x\(
                 String(irradCRC, radix: 16, uppercase: true)
             ) [expected: 0x\(
-                String(goldenIrradianceCRC32, radix: 16, uppercase: true)
+                String(Self.goldenIrradianceCRC32, radix: 16, uppercase: true)
             )]
             """
         )
-        guard irradCRC == goldenIrradianceCRC32 else {
+        guard irradCRC == Self.goldenIrradianceCRC32 else {
             fatalError("Verification failed: Irradiance CRC32 mismatch!")
         }
 
@@ -108,11 +127,11 @@ import SystemPackage
                Scattering    CRC32: 0x\(
                 String(scatCRC, radix: 16, uppercase: true)
             ) [expected: 0x\(
-                String(goldenScatteringCRC32, radix: 16, uppercase: true)
+                String(Self.goldenScatteringCRC32, radix: 16, uppercase: true)
             )]
             """
         )
-        guard scatCRC == goldenScatteringCRC32 else {
+        guard scatCRC == Self.goldenScatteringCRC32 else {
             fatalError("Verification failed: Scattering CRC32 mismatch!")
         }
 
@@ -121,7 +140,7 @@ import SystemPackage
             let goldenDir: FilePath = .init(goldenDirEnv)
             if (try? goldenDir.exists) == true {
                 print("5. Comparing float-by-float against golden files in ‘\(goldenDir)’...")
-                try verifyAgainstExternalGolden(
+                try Self.verifyAgainstExternalGolden(
                     dir: goldenDir,
                     transmittance: transTable,
                     irradiance: irradTable,

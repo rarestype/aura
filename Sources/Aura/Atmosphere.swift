@@ -40,6 +40,7 @@ struct Atmosphere {
         irradiance: Vector2<Int>
     )
 }
+extension Atmosphere: Sendable {}
 
 extension Atmosphere {
     // Serialized parameters for glsl shader
@@ -527,8 +528,8 @@ extension Atmosphere {
         return .init(
             radius: (bottom: 6.36e6, top: 6.42e6, sun: 0.004675),
             rayleigh: (.init(rayleigh.layer), scattering: RGB.Rs),
-            mie: (.init(mie.layer),      scattering: RGB.Ms, extinction: RGB.Me, g: mie.g),
-            absorption: (.init(ozone.layer.0, ozone.layer.1),       extinction: RGB.Ae),
+            mie: (.init(mie.layer), scattering: RGB.Ms, extinction: RGB.Me, g: mie.g),
+            absorption: (.init(ozone.layer.0, ozone.layer.1), extinction: RGB.Ae),
             irradiance: RGB.I,
             ground: RGB.ground,
             μsmin: .cos(smax),
@@ -553,8 +554,10 @@ extension Atmosphere {
 }
 
 extension Atmosphere {
-    func tables(N: Int = 4)
-    -> (
+    func tables(
+        workers: Int,
+        N: Int = 4
+    ) async -> (
         transmittance: TransmittanceTable,
         mie: ScatteringTable,
         scattering: ScatteringTable,
@@ -566,8 +569,9 @@ extension Atmosphere {
             transmittance: [Vector3<Double>]
         )
         // Transmittance
-        texture.transmittance   = TransmittanceTable.mapIndices(
-            size: self.resolution.transmittance
+        texture.transmittance   = await TransmittanceTable.mapIndices(
+            size: self.resolution.transmittance,
+            workers: workers
         ) {
             self.transmittance(texel: .cast($0) + 0.5)
         }
@@ -577,14 +581,16 @@ extension Atmosphere {
         )
 
         // Direct irradiance
-        texture.irradiance      = IrradianceTable.mapIndices(
-            size: self.resolution.irradiance
+        texture.irradiance      = await IrradianceTable.mapIndices(
+            size: self.resolution.irradiance,
+            workers: workers
         ) {
             transmittance.directIrradiance(texel: .cast($0) + 0.5)
         }
         // Single scattering
-        texture.scattering      = ScatteringTable.mapIndices(
-            size: self.resolution.scattering
+        texture.scattering      = await ScatteringTable.mapIndices(
+            size: self.resolution.scattering,
+            workers: workers
         ) {
             transmittance.singleScattering(texel: .cast($0) + 0.5)
         }
@@ -613,45 +619,55 @@ extension Atmosphere {
             count: self.resolution.irradiance.wrappingVolume
         )
         for n: Int in 2 ... N {
+            let previous: (
+                scattering: ScatteringTable,
+                irradiance: IrradianceTable
+            ) = (Δscattering, Δirradiance)
+
             let texture: (
                 irradiance: [Vector3<Double>],
                 density: [Vector3<Double>],
                 scattering: [(Vector3<Double>, ν: Double)]
             )
 
-            texture.irradiance = IrradianceTable.mapIndices(
-                size: self.resolution.irradiance
+            texture.irradiance = await IrradianceTable.mapIndices(
+                size: self.resolution.irradiance,
+                workers: workers
             ) {
-                Δscattering.indirectIrradiance(
+                previous.scattering.indirectIrradiance(
                     texel: .cast($0) + 0.5, n: n - 1,
                     rayleigh: Δrayleigh, mie: Δmie
                 )
             }
-            texture.density = ScatteringTable.mapIndices(size: self.resolution.scattering) {
-                Δscattering.density(
+            texture.density = await ScatteringTable.mapIndices(
+                size: self.resolution.scattering,
+                workers: workers
+            ) {
+                previous.scattering.density(
                     texel: .cast($0) + 0.5, n: n, transmittance: transmittance,
-                    rayleigh: Δrayleigh, mie: Δmie, irradiance: Δirradiance
+                    rayleigh: Δrayleigh, mie: Δmie, irradiance: previous.irradiance
                 )
             }
 
             // Multiple scattering
             let density: ScatteringTable = .init(atmosphere: self, buffer: texture.density)
-            texture.scattering = ScatteringTable.mapIndices(
-                size: self.resolution.scattering
+            texture.scattering = await ScatteringTable.mapIndices(
+                size: self.resolution.scattering,
+                workers: workers
             ) {
                 density.multipleScattering(texel: .cast($0) + 0.5, transmittance: transmittance)
             }
 
             // Update and accumulate
             for i: Int in texture.scattering.indices {
-                let (Δ, ν): (Vector3<Double>, Double)  = texture.scattering[i]
-                Δscattering.buffer[i]       = Δ
-                scattering[i]              += Δ / Self.Rφ(ν)
+                let (Δ, ν): (Vector3<Double>, Double) = texture.scattering[i]
+                Δscattering.buffer[i] = Δ
+                scattering[i] += Δ / Self.Rφ(ν)
             }
             for i: Int in texture.irradiance.indices {
-                let Δ: Vector3<Double>            = texture.irradiance[i]
-                Δirradiance.buffer[i]       = Δ
-                irradiance[i]              += Δ
+                let Δ: Vector3<Double> = texture.irradiance[i]
+                Δirradiance.buffer[i] = Δ
+                irradiance[i] += Δ
             }
         }
 

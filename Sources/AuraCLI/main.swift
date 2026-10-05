@@ -2,7 +2,34 @@ import ArgumentParser
 import Aura
 import SystemPackage
 
-@main struct AuraCLI: ParsableCommand {
+@main struct AuraCLI {
+    @Argument(
+        help: "Paths to one or more Ion (.ion) atmospheric configuration files."
+    ) var configs: [String]
+
+    @Option(
+        name: [.customLong("threads"), .customShort("j")],
+        help: "Number of threads to use for precomputation"
+    ) var threads: Int = 4
+
+    @Option(
+        name: [.customLong("detail"), .customShort("d")],
+        help: """
+        The level of detail for precomputed tables (1 to 5). \
+        Higher detail increases table resolution
+        """
+    ) var detail: Int = 3
+
+    @Option(
+        name: [.customLong("output"), .customShort("o")],
+        help: """
+        Output file path (e.g. ‘atmosphere.aura’ or ‘atmospheres.aura’) \
+        or directory to write archive to
+        """
+    ) var output: String?
+}
+
+extension AuraCLI: AsyncParsableCommand {
     static var configuration: CommandConfiguration {
         .init(
             commandName: "aura",
@@ -12,27 +39,7 @@ import SystemPackage
         )
     }
 
-    @Argument(
-        help: "Paths to one or more Ion (.ion) atmospheric configuration files."
-    ) var configs: [String]
-
-    @Option(
-        name: .shortAndLong,
-        help: """
-        The level of detail for precomputed tables (1 to 5). \
-        Higher detail increases table resolution.
-        """
-    ) var detail: Int = 3
-
-    @Option(
-        name: .shortAndLong,
-        help: """
-        Output file path (e.g. ‘atmosphere.aura’ or ‘atmospheres.aura’) \
-        or directory to write archive to.
-        """
-    ) var output: String?
-
-    func run() throws {
+    func run() async throws {
         guard !self.configs.isEmpty else {
             print("Error: No configuration files specified.")
             throw ExitCode.failure
@@ -81,8 +88,9 @@ import SystemPackage
             )'...
             """
         )
-        let archive: AtmosphereArchive = try .bake(
+        let archive: AtmosphereArchive = try await .bake(
             configs: atmosphereConfigs,
+            workers: self.threads,
             detail: self.detail
         )
         try archive.write(to: outPath)

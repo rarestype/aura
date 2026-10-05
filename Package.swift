@@ -44,6 +44,7 @@ let package: Package = .init(
                 .target(name: "Aura"),
                 .product(name: "CRC", package: "h"),
                 .product(name: "SystemIO", package: "swift-io"),
+                .product(name: "System_ArgumentParser", package: "swift-io"),
             ]
         ),
         .testTarget(

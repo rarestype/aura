@@ -16,37 +16,56 @@ extension AtmosphereTable<Vector2<Int>> {
         }
     }
 
-    // static func mapIndices<R>(
-    //     size: Vector2<Int>,
-    //     transform: @Sendable (Vector2<Int>) -> R
-    // ) -> [R] {
-    //     .init(unsafeUninitializedCapacity: size.wrappingVolume) { buffer, initializedCount in
-    //         guard let base: UnsafeMutablePointer<R> = buffer.baseAddress else {
-    //             initializedCount = 0
-    //             return
-    //         }
-    //         nonisolated(unsafe) let destination: UnsafeMutablePointer<R> = base
-    //         DispatchQueue.concurrentPerform(iterations: size.y) { j in
-    //             let rowOffset: Int = j * size.x
-    //             for i: Int in 0 ..< size.x {
-    //                 destination[rowOffset + i] = transform(.init(i, j))
-    //             }
-    //         }
-    //         initializedCount = size.wrappingVolume
-    //     }
-    // }
-
     static func mapIndices<R>(
         size: Vector2<Int>,
-        transform: (Vector2<Int>) throws -> R
-    ) rethrows -> [R] {
-        try .init(unsafeUninitializedCapacity: size.wrappingVolume) {
+        workers: Int,
+        transform: @Sendable @escaping (Vector2<Int>) -> R
+    ) async -> [R] where R: Sendable {
+        guard workers > 1 else {
+            var result: [R] = []
+            result.reserveCapacity(size.wrappingVolume)
             for j: Int in 0 ..< size.y {
                 for i: Int in 0 ..< size.x {
-                    $0[j * size.x + i] = try transform(.init(i, j))
+                    result.append(transform(.init(i, j)))
                 }
             }
-            $1 = size.wrappingVolume
+            return result
+        }
+
+        let totalRows: Int = size.y
+        let workerCount: Int = max(1, min(workers, totalRows))
+        let rowsPerWorker: Int = (totalRows + workerCount - 1) / workerCount
+
+        return await withTaskGroup(of: (Int, [R]).self) { group in
+            for w: Int in 0 ..< workerCount {
+                let startRow: Int = w * rowsPerWorker
+                let endRow: Int = min(startRow + rowsPerWorker, totalRows)
+                guard startRow < endRow else { continue }
+
+                group.addTask {
+                    let count: Int = (endRow - startRow) * size.x
+                    var chunk: [R] = []
+                    chunk.reserveCapacity(count)
+                    for j: Int in startRow ..< endRow {
+                        for i: Int in 0 ..< size.x {
+                            chunk.append(transform(.init(i, j)))
+                        }
+                    }
+                    return (w, chunk)
+                }
+            }
+
+            var slices: [[R]] = .init(repeating: [], count: workerCount)
+            for await (w, chunk) in group {
+                slices[w] = chunk
+            }
+
+            var result: [R] = []
+            result.reserveCapacity(size.wrappingVolume)
+            for slice: [R] in slices {
+                result.append(contentsOf: slice)
+            }
+            return result
         }
     }
 }
@@ -61,42 +80,60 @@ extension AtmosphereTable<Vector3<Int>> {
         }
     }
 
-    // static func mapIndices<R>(
-    //     size: Vector3<Int>,
-    //     transform: @Sendable (Vector3<Int>) -> R
-    // ) -> [R] {
-    //     let rowCount: Int = size.z * size.y
-    //     return .init(unsafeUninitializedCapacity: size.wrappingVolume) { buffer, initializedCount in
-    //         guard let base: UnsafeMutablePointer<R> = buffer.baseAddress else {
-    //             initializedCount = 0
-    //             return
-    //         }
-    //         nonisolated(unsafe) let destination: UnsafeMutablePointer<R> = base
-    //         DispatchQueue.concurrentPerform(iterations: rowCount) { rowIndex in
-    //             let k: Int = rowIndex / size.y
-    //             let j: Int = rowIndex % size.y
-    //             let rowOffset: Int = rowIndex * size.x
-    //             for i: Int in 0 ..< size.x {
-    //                 destination[rowOffset + i] = transform(.init(i, j, k))
-    //             }
-    //         }
-    //         initializedCount = size.wrappingVolume
-    //     }
-    // }
-
     static func mapIndices<R>(
         size: Vector3<Int>,
-        transform: (Vector3<Int>) throws -> R
-    ) rethrows -> [R] {
-        try .init(unsafeUninitializedCapacity: size.wrappingVolume) {
+        workers: Int,
+        transform: @Sendable @escaping (Vector3<Int>) -> R
+    ) async -> [R] where R: Sendable {
+        guard workers > 1 else {
+            var result: [R] = []
+            result.reserveCapacity(size.wrappingVolume)
             for k: Int in 0 ..< size.z {
                 for j: Int in 0 ..< size.y {
                     for i: Int in 0 ..< size.x {
-                        $0[(k * size.y + j) * size.x + i] = try transform(.init(i, j, k))
+                        result.append(transform(.init(i, j, k)))
                     }
                 }
             }
-            $1 = size.wrappingVolume
+            return result
+        }
+
+        let totalRows: Int = size.z * size.y
+        let workerCount: Int = max(1, min(workers, totalRows))
+        let rowsPerWorker: Int = (totalRows + workerCount - 1) / workerCount
+
+        return await withTaskGroup(of: (Int, [R]).self) { group in
+            for w: Int in 0 ..< workerCount {
+                let startRow: Int = w * rowsPerWorker
+                let endRow: Int = min(startRow + rowsPerWorker, totalRows)
+                guard startRow < endRow else { continue }
+
+                group.addTask {
+                    let count: Int = (endRow - startRow) * size.x
+                    var chunk: [R] = []
+                    chunk.reserveCapacity(count)
+                    for r: Int in startRow ..< endRow {
+                        let k: Int = r / size.y
+                        let j: Int = r % size.y
+                        for i: Int in 0 ..< size.x {
+                            chunk.append(transform(.init(i, j, k)))
+                        }
+                    }
+                    return (w, chunk)
+                }
+            }
+
+            var slices: [[R]] = .init(repeating: [], count: workerCount)
+            for await (w, chunk) in group {
+                slices[w] = chunk
+            }
+
+            var result: [R] = []
+            result.reserveCapacity(size.wrappingVolume)
+            for slice: [R] in slices {
+                result.append(contentsOf: slice)
+            }
+            return result
         }
     }
 }

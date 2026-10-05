@@ -156,7 +156,7 @@ extension TransmittanceTable {
 
         let αs: Double = self.atmosphere.radius.sun
         let average: Double
-        if      μs <= -αs {
+        if μs <= -αs {
             average = 0
         } else if μs <   αs {
             let β: Double = μs + αs
