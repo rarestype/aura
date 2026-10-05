@@ -153,7 +153,7 @@ extension AtmosphereConfig {
         }
 
         // 2. Ion text
-        let text: String = String(decoding: fileBytes, as: UTF8.self)
+        let text: String = .init(decoding: fileBytes, as: UTF8.self)
         guard !text.isEmpty else {
             throw AtmosphereError.invalidConfigFile(
                 "File is empty or not valid UTF-8 text: ‘\(path)’"
