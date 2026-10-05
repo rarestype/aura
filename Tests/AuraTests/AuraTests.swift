@@ -14,13 +14,13 @@ import Testing
             scattering: Vector4<Int>.init(4, 16, 4, 1) &<< 1,
             irradiance: Vector2<Int>.init(8, 2)        &<< 1
         )
-        let ref: Atmosphere = .earth(resolutions: resolutions)
+        let reference: Atmosphere = .earth(resolutions: resolutions)
         let config: AtmosphereConfig = try .parse(ion: Self.earth)
         let parameterized: Atmosphere = .from(config: config, resolutions: resolutions)
 
-        #expect(ref.serialized == parameterized.serialized)
-        #expect(ref.ground == parameterized.ground)
-        #expect(ref.absorption.extinction == parameterized.absorption.extinction)
+        #expect(reference.serialized == parameterized.serialized)
+        #expect(reference.ground == parameterized.ground)
+        #expect(reference.absorption.extinction == parameterized.absorption.extinction)
     }
 
     @Test static func IonBinaryRoundtrip() throws {
@@ -214,32 +214,32 @@ import Testing
         #expect(earthEntry.tables["scattering"] != nil)
         #expect(earthEntry.tables["irradiance"] != nil)
 
-        let trans: [SIMD4<Float>] = try deserialized.extractTable(
+        let transmittance: [SIMD4<Float>] = try deserialized.extractTable(
             for: "Earth",
             table: "transmittance"
         )
-        let transDesc: AtmosphereArchive.TableDescriptor = try #require(
+        let transmittanceDescriptor: AtmosphereArchive.TableDescriptor = try #require(
             earthEntry.tables["transmittance"]
         )
-        #expect(trans.count == transDesc.width * transDesc.height)
+        #expect(transmittance.count == transmittanceDescriptor.width * transmittanceDescriptor.height)
 
-        let scat: [SIMD4<Float>] = try deserialized.extractTable(
+        let scattering: [SIMD4<Float>] = try deserialized.extractTable(
             for: "Earth",
             table: "scattering"
         )
-        let scatDesc: AtmosphereArchive.TableDescriptor = try #require(
+        let scatteringDescriptor: AtmosphereArchive.TableDescriptor = try #require(
             earthEntry.tables["scattering"]
         )
-        #expect(scat.count == scatDesc.width * scatDesc.height * (scatDesc.depth ?? 1))
+        #expect(scattering.count == scatteringDescriptor.width * scatteringDescriptor.height * (scatteringDescriptor.depth ?? 1))
 
-        let irrad: [SIMD4<Float>] = try deserialized.extractTable(
+        let irradiance: [SIMD4<Float>] = try deserialized.extractTable(
             for: "Earth",
             table: "irradiance"
         )
-        let irradDesc: AtmosphereArchive.TableDescriptor = try #require(
+        let irradianceDescriptor: AtmosphereArchive.TableDescriptor = try #require(
             earthEntry.tables["irradiance"]
         )
-        #expect(irrad.count == irradDesc.width * irradDesc.height)
+        #expect(irradiance.count == irradianceDescriptor.width * irradianceDescriptor.height)
     }
 
     @Test static func AtmosphereArchiveMultiPlanetRoundtrip() async throws {
