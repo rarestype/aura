@@ -1,4 +1,4 @@
-## Testing for developmemt
+## Testing for development
 
 Always run `swift test` in release mode (`-c release`). Debug builds are extremely slow for atmospheric computation.
 

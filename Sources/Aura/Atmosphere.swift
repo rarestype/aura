@@ -743,7 +743,7 @@ extension Atmosphere {
             config.mie_scattering[2]
         )
         let mieExtinction: Vector3<Double>
-        if let extinction = config.mie_extinction, extinction.count == 3 {
+        if let extinction: [Double] = config.mie_extinction, extinction.count == 3 {
             mieExtinction = .init(extinction[0], extinction[1], extinction[2])
         } else {
             let albedo: Double = config.mie_albedo ?? 0.9
@@ -752,7 +752,7 @@ extension Atmosphere {
 
         let ozoneProfile: DensityProfile
         let ozoneExtinction: Vector3<Double>
-        if let ozone = config.ozone_extinction, ozone.count == 3 {
+        if let ozone: [Double] = config.ozone_extinction, ozone.count == 3 {
             let altitude: Double = config.ozone_altitude ?? 25000.0
             let thickness: Double = config.ozone_thickness ?? 15000.0
             let ozoneLayer0: DensityProfile.Layer = .init(

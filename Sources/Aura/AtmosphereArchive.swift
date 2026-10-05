@@ -4,7 +4,7 @@ import SystemIO
 import SystemPackage
 
 public struct AtmosphereArchive: Sendable, Equatable {
-    public static let currentVersion: UInt32 = 1
+    @inlinable public static var currentVersion: UInt32 { 1 }
 
     public var manifest: Manifest
 
@@ -50,7 +50,9 @@ extension AtmosphereArchive {
             uncompressed = archive
         }
 
-        let manifest: Manifest = try Ion(bytes: uncompressed[...]).decode(atomic: Manifest.self)
+        let manifest: Manifest = try Ion.init(bytes: uncompressed[...]).decode(
+            atomic: Manifest.self
+        )
         guard manifest.version == Self.currentVersion else {
             throw Error.unsupportedVersion(manifest.version)
         }
@@ -122,7 +124,10 @@ extension AtmosphereArchive {
             let scatteringWidth: Int = atmosphere.resolution.scattering.x
             let scatteringHeight: Int = atmosphere.resolution.scattering.y
             let scatteringDepth: Int = atmosphere.resolution.scattering.z
-            let scatteringBuffer: [SIMD4<Float>] = zip(table.scattering.buffer, table.mie.buffer).map {
+            let scatteringBuffer: [SIMD4<Float>] = zip(
+                table.scattering.buffer,
+                table.mie.buffer
+            ).map {
                 .init(.init($0.x), .init($0.y), .init($0.z), .init($1.x))
             }
             let scatteringShuffled: [UInt8] = AtmosphereCompression.filterAndShuffle(
@@ -147,7 +152,7 @@ extension AtmosphereArchive {
 
             // 4. Physical parameters & resolutions
             let p: [Float] = atmosphere.serialized.map(Float.init)
-            let params: AtmosphereParameters = .init(
+            let parameters: AtmosphereParameters = .init(
                 radius_bottom: p[0],
                 radius_top: p[1],
                 radius_sun: p[2],
@@ -187,7 +192,7 @@ extension AtmosphereArchive {
 
             let entry: PlanetEntry = .init(
                 name: config.name,
-                parameters: params,
+                parameters: parameters,
                 tables: .init(
                     transmittance: transmittanceDescriptor,
                     scattering: scatteringDescriptor,
@@ -209,8 +214,8 @@ extension AtmosphereArchive {
             .writeOnly,
             permissions: (.rw, .rw, .r),
             options: [.create, .truncate]
-        ) { descriptor in
-            try compressedBytes.withUnsafeBytes { raw in
+        ) { (descriptor: FileDescriptor) in
+            try compressedBytes.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
                 try descriptor.writeAll(raw)
             }
         }
