@@ -173,9 +173,13 @@ import Testing
         #expect(rawMatches)
     }
 
-    @Test static func AtmosphereArchiveSinglePlanetRoundtrip() throws {
+    @Test static func AtmosphereArchiveSinglePlanetRoundtrip() async throws {
         let earthConfig: AtmosphereConfig = try .parse(ion: Self.earth)
-        let archive: AtmosphereArchive = try .bake(configs: [earthConfig], detail: 1)
+        let archive: AtmosphereArchive = try await .bake(
+            configs: [earthConfig],
+            workers: 4,
+            detail: 1
+        )
         #expect(archive.manifest.planets["Earth"] != nil)
         #expect(archive.manifest.planets["earth"] == nil) // Distinct casing!
 
@@ -238,11 +242,12 @@ import Testing
         #expect(irrad.count == irradDesc.width * irradDesc.height)
     }
 
-    @Test static func AtmosphereArchiveMultiPlanetRoundtrip() throws {
+    @Test static func AtmosphereArchiveMultiPlanetRoundtrip() async throws {
         let earthConfig: AtmosphereConfig = try .parse(ion: Self.earth)
         let marsConfig: AtmosphereConfig = try .parse(ion: Self.mars)
-        let archive: AtmosphereArchive = try .bake(
+        let archive: AtmosphereArchive = try await .bake(
             configs: [earthConfig, marsConfig],
+            workers: 4,
             detail: 1
         )
         #expect(archive.manifest.planets.count == 2)

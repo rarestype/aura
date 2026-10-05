@@ -8,14 +8,18 @@ import SystemPackage
     static let goldenIrradianceCRC32: UInt32 = 0xB193C82B
     static let goldenScatteringCRC32: UInt32 = 0xA71A2E72
 
-    static func main() throws {
+    static func main() async throws {
         print("1. Parsing Earth atmospheric configuration from embedded string...")
         let config: AtmosphereConfig = try AtmosphereConfig.parse(ion: Self.earthIon)
 
         print("2. Baking Earth atmosphere archive at detail 3...")
         let clock: ContinuousClock = .init()
         let start: ContinuousClock.Instant = clock.now
-        let archive: AtmosphereArchive = try .bake(configs: [config], detail: 3)
+        let archive: AtmosphereArchive = try await .bake(
+            configs: [config],
+            workers: 4,
+            detail: 3
+        )
         let elapsed: Duration = start.duration(to: clock.now)
         print("   Detail 3 precomputation finished in \(elapsed)!")
 

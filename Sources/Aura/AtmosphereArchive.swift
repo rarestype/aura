@@ -80,30 +80,35 @@ extension AtmosphereArchive {
     /// Bakes one or more atmospheric configurations into a unified archive.
     public static func bake(
         configs: [AtmosphereConfig],
-        detail: Int = 3
-    ) throws -> AtmosphereArchive {
+        workers: Int,
+        detail: Int = 3,
+    ) async throws -> AtmosphereArchive {
         guard 1 ... 5 ~= detail else {
             throw AtmosphereError.invalidDetail(detail)
         }
 
         var planets: [PlanetEntry] = []
-
         for config: AtmosphereConfig in configs {
             let atmosphere: Atmosphere = .from(
                 config: config,
                 resolutions: (
-                    transmittance: .init(32, 8)       &<< detail,
+                    transmittance: .init(32, 8) &<< detail,
                     scattering: .init(4, 16, 4, 1) &<< detail,
-                    irradiance: .init(8, 2)        &<< detail
+                    irradiance: .init(8, 2) &<< detail
                 )
             )
 
-            let (transmittance, mie, scattering, irradiance) = atmosphere.tables()
+            let table: (
+                transmittance: TransmittanceTable,
+                mie: ScatteringTable,
+                scattering: ScatteringTable,
+                irradiance: IrradianceTable
+            ) = atmosphere.tables(workers: workers)
 
             // 1. Transmittance table
             let transmittanceWidth: Int = atmosphere.resolution.transmittance.x
             let transmittanceHeight: Int = atmosphere.resolution.transmittance.y
-            let transmittanceBuffer: [SIMD4<Float>] = transmittance.buffer.map {
+            let transmittanceBuffer: [SIMD4<Float>] = table.transmittance.buffer.map {
                 .init(.init($0.x), .init($0.y), .init($0.z), 1.0)
             }
             let transmittanceShuffled: [UInt8] = AtmosphereCompression.filterAndShuffle(
@@ -117,7 +122,7 @@ extension AtmosphereArchive {
             let scatteringWidth: Int = atmosphere.resolution.scattering.x
             let scatteringHeight: Int = atmosphere.resolution.scattering.y
             let scatteringDepth: Int = atmosphere.resolution.scattering.z
-            let scatteringBuffer: [SIMD4<Float>] = zip(scattering.buffer, mie.buffer).map {
+            let scatteringBuffer: [SIMD4<Float>] = zip(table.scattering.buffer, table.mie.buffer).map {
                 .init(.init($0.x), .init($0.y), .init($0.z), .init($1.x))
             }
             let scatteringShuffled: [UInt8] = AtmosphereCompression.filterAndShuffle(
@@ -130,7 +135,7 @@ extension AtmosphereArchive {
             // 3. Irradiance table
             let irradianceWidth: Int = atmosphere.resolution.irradiance.x
             let irradianceHeight: Int = atmosphere.resolution.irradiance.y
-            let irradianceBuffer: [SIMD4<Float>] = irradiance.buffer.map {
+            let irradianceBuffer: [SIMD4<Float>] = table.irradiance.buffer.map {
                 .init(.init($0.x), .init($0.y), .init($0.z), 1.0)
             }
             let irradianceShuffled: [UInt8] = AtmosphereCompression.filterAndShuffle(

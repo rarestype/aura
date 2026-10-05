@@ -553,8 +553,10 @@ extension Atmosphere {
 }
 
 extension Atmosphere {
-    func tables(N: Int = 4)
-    -> (
+    func tables(
+        workers: Int,
+        N: Int = 4
+    ) -> (
         transmittance: TransmittanceTable,
         mie: ScatteringTable,
         scattering: ScatteringTable,
