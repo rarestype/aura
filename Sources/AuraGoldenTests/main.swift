@@ -5,9 +5,9 @@ import SystemIO
 import SystemPackage
 
 @main struct AuraGoldenTests {
-    static let goldenTransmittanceCRC32: UInt32 = 0xAB53BAD0
-    static let goldenIrradianceCRC32: UInt32 = 0xB193C82B
-    static let goldenScatteringCRC32: UInt32 = 0xA71A2E72
+    static var goldenTransmittanceCRC32: UInt32 { 0xAB53BAD0 }
+    static var goldenIrradianceCRC32: UInt32 { 0xB193C82B }
+    static var goldenScatteringCRC32: UInt32 { 0xA71A2E72 }
 
     @Option(
         name: [.customLong("threads"), .customShort("j")],
@@ -270,40 +270,42 @@ extension AuraGoldenTests: AsyncParsableCommand {
 }
 
 extension AuraGoldenTests {
-    static let earthIon: String = """
-    {
-        // Atmosphere configuration for Earth
-        name: "Earth",
+    static var earthIon: String {
+        """
+        {
+            // Atmosphere configuration for Earth
+            name: "Earth",
 
-        // Planetary geometry (meters and radians)
-        radius_bottom: 6360000.0e0,
-        radius_top: 6420000.0e0,
-        sun_angular_radius: 0.004675e0,
-        max_sun_zenith_angle: 102.0e0,
+            // Planetary geometry (meters and radians)
+            radius_bottom: 6360000.0e0,
+            radius_top: 6420000.0e0,
+            sun_angular_radius: 0.004675e0,
+            max_sun_zenith_angle: 102.0e0,
 
-        // Rayleigh molecular scattering
-        rayleigh_scale_height: 8000.0e0,
-        rayleigh_scattering: [
-            5.8023393817123834e-06,
-            1.3557762447920223e-05,
-            3.3100005976367735e-05
-        ],
+            // Rayleigh molecular scattering
+            rayleigh_scale_height: 8000.0e0,
+            rayleigh_scattering: [
+                5.8023393817123834e-06,
+                1.3557762447920223e-05,
+                3.3100005976367735e-05
+            ],
 
-        // Mie aerosol scattering
-        mie_scale_height: 1200.0e0,
-        mie_scattering: [3.996e-06, 3.996e-06, 3.996e-06],
-        mie_extinction: [4.44e-06, 4.44e-06, 4.44e-06],
-        mie_albedo: 0.9e0,
-        mie_g: 0.8e0,
+            // Mie aerosol scattering
+            mie_scale_height: 1200.0e0,
+            mie_scattering: [3.996e-06, 3.996e-06, 3.996e-06],
+            mie_extinction: [4.44e-06, 4.44e-06, 4.44e-06],
+            mie_albedo: 0.9e0,
+            mie_g: 0.8e0,
 
-        // Absorption / Ozone layer (tent profile centered at 25km)
-        ozone_extinction: [7.206534e-07, 1.7710017e-06, 6.5216177e-08],
-        ozone_altitude: 25000.0e0,
-        ozone_thickness: 15000.0e0,
+            // Absorption / Ozone layer (tent profile centered at 25km)
+            ozone_extinction: [7.206534e-07, 1.7710017e-06, 6.5216177e-08],
+            ozone_altitude: 25000.0e0,
+            ozone_thickness: 15000.0e0,
 
-        // Illumination and surface reflectance
-        solar_irradiance: [1.49265e0, 1.850945e0, 1.7622550000000001e0],
-        ground_albedo: [0.1e0, 0.1e0, 0.1e0]
+            // Illumination and surface reflectance
+            solar_irradiance: [1.49265e0, 1.850945e0, 1.7622550000000001e0],
+            ground_albedo: [0.1e0, 0.1e0, 0.1e0]
+        }
+        """
     }
-    """
 }
