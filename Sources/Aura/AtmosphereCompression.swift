@@ -10,7 +10,7 @@ public enum AtmosphereCompression {
         depth: Int = 1,
         bpp: Int = 16
     ) -> [UInt8] {
-        bytes.withUnsafeBytes { raw in
+        bytes.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
             Self.filterAndShuffle(
                 raw: raw,
                 width: width,
@@ -29,7 +29,7 @@ public enum AtmosphereCompression {
         depth: Int = 1,
         bpp: Int = 16
     ) -> [UInt8] {
-        bytes.withUnsafeBytes { raw in
+        bytes.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
             Self.filterAndShuffle(
                 raw: raw,
                 width: width,
@@ -63,7 +63,7 @@ public enum AtmosphereCompression {
         let rowBytes: Int = width * bpp
         var filtered: [UInt8] = .init(repeating: 0, count: totalBytes)
 
-        filtered.withUnsafeMutableBufferPointer { filteredPtr in
+        filtered.withUnsafeMutableBufferPointer { (filteredPtr: inout UnsafeMutableBufferPointer<UInt8>) in
             for z: Int in 0 ..< depth {
                 let sliceOffset: Int = z * height * rowBytes
 
@@ -87,8 +87,8 @@ public enum AtmosphereCompression {
 
         // 2. Byte shuffle: transpose from (numPixels, bpp) to (bpp, numPixels)
         var shuffled: [UInt8] = .init(repeating: 0, count: totalBytes)
-        filtered.withUnsafeBufferPointer { filteredPtr in
-            shuffled.withUnsafeMutableBufferPointer { shuffledPtr in
+        filtered.withUnsafeBufferPointer { (filteredPtr: UnsafeBufferPointer<UInt8>) in
+            shuffled.withUnsafeMutableBufferPointer { (shuffledPtr: inout UnsafeMutableBufferPointer<UInt8>) in
                 for p: Int in 0 ..< bpp {
                     let planeOffset: Int = p * numPixels
                     for i: Int in 0 ..< numPixels {
@@ -108,7 +108,7 @@ public enum AtmosphereCompression {
         height: Int,
         depth: Int = 1
     ) -> [UInt8] {
-        simd4.withUnsafeBytes { raw in
+        simd4.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
             Self.filterAndShuffle(raw: raw, width: width, height: height, depth: depth, bpp: 16)
         }
     }
@@ -165,7 +165,7 @@ public enum AtmosphereCompression {
         depth: Int = 1,
         bpp: Int = 16
     ) -> [UInt8] {
-        bytes.withUnsafeBytes { raw in
+        bytes.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
             Self.compress(raw: raw, width: width, height: height, depth: depth, bpp: bpp)
         }
     }
@@ -179,7 +179,7 @@ public enum AtmosphereCompression {
         depth: Int = 1,
         bpp: Int = 16
     ) -> [UInt8] {
-        bytes.withUnsafeBytes { raw in
+        bytes.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
             Self.compress(raw: raw, width: width, height: height, depth: depth, bpp: bpp)
         }
     }
@@ -210,7 +210,7 @@ public enum AtmosphereCompression {
         height: Int,
         depth: Int = 1
     ) -> [UInt8] {
-        simd4.withUnsafeBytes { raw in
+        simd4.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
             Self.compress(raw: raw, width: width, height: height, depth: depth, bpp: 16)
         }
     }
@@ -258,7 +258,7 @@ public enum AtmosphereCompression {
             bpp: 16
         )
         let numPixels: Int = width * height * depth
-        return bytes.withUnsafeBytes { raw in
+        return bytes.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
             let bound: UnsafeBufferPointer<SIMD4<Float>> = raw.bindMemory(to: SIMD4<Float>.self)
             return .init(bound.prefix(numPixels))
         }
