@@ -50,7 +50,9 @@ extension AtmosphereArchive {
             uncompressed = archive
         }
 
-        let manifest: Manifest = try Ion.init(bytes: uncompressed[...]).decode(atomic: Manifest.self)
+        let manifest: Manifest = try Ion.init(bytes: uncompressed[...]).decode(
+            atomic: Manifest.self
+        )
         guard manifest.version == Self.currentVersion else {
             throw Error.unsupportedVersion(manifest.version)
         }
@@ -122,7 +124,10 @@ extension AtmosphereArchive {
             let scatteringWidth: Int = atmosphere.resolution.scattering.x
             let scatteringHeight: Int = atmosphere.resolution.scattering.y
             let scatteringDepth: Int = atmosphere.resolution.scattering.z
-            let scatteringBuffer: [SIMD4<Float>] = zip(table.scattering.buffer, table.mie.buffer).map {
+            let scatteringBuffer: [SIMD4<Float>] = zip(
+                table.scattering.buffer,
+                table.mie.buffer
+            ).map {
                 .init(.init($0.x), .init($0.y), .init($0.z), .init($1.x))
             }
             let scatteringShuffled: [UInt8] = AtmosphereCompression.filterAndShuffle(

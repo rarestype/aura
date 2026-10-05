@@ -63,7 +63,9 @@ public enum AtmosphereCompression {
         let rowBytes: Int = width * bpp
         var filtered: [UInt8] = .init(repeating: 0, count: totalBytes)
 
-        filtered.withUnsafeMutableBufferPointer { (filteredPtr: inout UnsafeMutableBufferPointer<UInt8>) in
+        filtered.withUnsafeMutableBufferPointer { (
+                filteredPtr: inout UnsafeMutableBufferPointer<UInt8>
+            ) in
             for z: Int in 0 ..< depth {
                 let sliceOffset: Int = z * height * rowBytes
 
@@ -88,7 +90,9 @@ public enum AtmosphereCompression {
         // 2. Byte shuffle: transpose from (numPixels, bpp) to (bpp, numPixels)
         var shuffled: [UInt8] = .init(repeating: 0, count: totalBytes)
         filtered.withUnsafeBufferPointer { (filteredPtr: UnsafeBufferPointer<UInt8>) in
-            shuffled.withUnsafeMutableBufferPointer { (shuffledPtr: inout UnsafeMutableBufferPointer<UInt8>) in
+            shuffled.withUnsafeMutableBufferPointer { (
+                    shuffledPtr: inout UnsafeMutableBufferPointer<UInt8>
+                ) in
                 for p: Int in 0 ..< bpp {
                     let planeOffset: Int = p * numPixels
                     for i: Int in 0 ..< numPixels {

@@ -36,7 +36,9 @@ extension AtmosphereTable<Vector2<Int>> {
         let workerCount: Int = max(1, min(workers, totalRows))
         let rowsPerWorker: Int = (totalRows + workerCount - 1) / workerCount
 
-        return await withTaskGroup(of: (Int, [R]).self) { (group: inout TaskGroup<(Int, [R])>) in
+        return await withTaskGroup(
+            of: (Int, [R]).self
+        ) { (group: inout TaskGroup<(Int, [R])>) in
             for w: Int in 0 ..< workerCount {
                 let startRow: Int = w * rowsPerWorker
                 let endRow: Int = min(startRow + rowsPerWorker, totalRows)
@@ -102,7 +104,9 @@ extension AtmosphereTable<Vector3<Int>> {
         let workerCount: Int = max(1, min(workers, totalRows))
         let rowsPerWorker: Int = (totalRows + workerCount - 1) / workerCount
 
-        return await withTaskGroup(of: (Int, [R]).self) { (group: inout TaskGroup<(Int, [R])>) in
+        return await withTaskGroup(
+            of: (Int, [R]).self
+        ) { (group: inout TaskGroup<(Int, [R])>) in
             for w: Int in 0 ..< workerCount {
                 let startRow: Int = w * rowsPerWorker
                 let endRow: Int = min(startRow + rowsPerWorker, totalRows)

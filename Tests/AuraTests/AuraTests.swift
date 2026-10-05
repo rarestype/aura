@@ -221,7 +221,9 @@ import Testing
         let transmittanceDescriptor: AtmosphereArchive.TableDescriptor = try #require(
             earthEntry.tables["transmittance"]
         )
-        #expect(transmittance.count == transmittanceDescriptor.width * transmittanceDescriptor.height)
+        #expect(
+            transmittance.count == transmittanceDescriptor.width * transmittanceDescriptor.height
+        )
 
         let scattering: [SIMD4<Float>] = try deserialized.extractTable(
             for: "Earth",
@@ -230,7 +232,11 @@ import Testing
         let scatteringDescriptor: AtmosphereArchive.TableDescriptor = try #require(
             earthEntry.tables["scattering"]
         )
-        #expect(scattering.count == scatteringDescriptor.width * scatteringDescriptor.height * (scatteringDescriptor.depth ?? 1))
+        #expect(
+            scattering.count == scatteringDescriptor.width * scatteringDescriptor.height * (
+                scatteringDescriptor.depth ?? 1
+            )
+        )
 
         let irradiance: [SIMD4<Float>] = try deserialized.extractTable(
             for: "Earth",
