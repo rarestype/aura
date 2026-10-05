@@ -147,7 +147,7 @@ extension AtmosphereArchive {
 
             // 4. Physical parameters & resolutions
             let p: [Float] = atmosphere.serialized.map(Float.init)
-            let params: AtmosphereParameters = .init(
+            let parameters: AtmosphereParameters = .init(
                 radius_bottom: p[0],
                 radius_top: p[1],
                 radius_sun: p[2],
