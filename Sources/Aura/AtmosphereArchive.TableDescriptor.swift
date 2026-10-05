@@ -35,7 +35,7 @@ extension AtmosphereArchive.TableDescriptor: IonEncodableStruct {
         ion[.width] = self.width
         ion[.height] = self.height
         ion[.depth] = self.depth
-        ion[.data] = Ion.BlobView<[UInt8], Ion.BlobType>(bytes: self.data)
+        ion[.data] = .init(bytes: self.data)
     }
 }
 
