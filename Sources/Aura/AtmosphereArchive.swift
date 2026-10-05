@@ -4,7 +4,7 @@ import SystemIO
 import SystemPackage
 
 public struct AtmosphereArchive: Sendable, Equatable {
-    public static let currentVersion: UInt32 = 1
+    @inlinable public static var currentVersion: UInt32 { 1 }
 
     public var manifest: Manifest
 
