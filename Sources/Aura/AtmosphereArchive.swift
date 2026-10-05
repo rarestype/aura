@@ -103,7 +103,7 @@ extension AtmosphereArchive {
                 mie: ScatteringTable,
                 scattering: ScatteringTable,
                 irradiance: IrradianceTable
-            ) = atmosphere.tables(workers: workers)
+            ) = await atmosphere.tables(workers: workers)
 
             // 1. Transmittance table
             let transmittanceWidth: Int = atmosphere.resolution.transmittance.x
