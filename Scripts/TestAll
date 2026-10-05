@@ -1,0 +1,13 @@
+#!/bin/bash
+set -euo pipefail
+
+swift --version
+
+# 1. Build tests and release targets in a single compilation pass
+swift build -c release --build-tests -Xswiftc -enable-testing
+
+# 2. Fast unit tests in release mode (~3s)
+swift test -c release --skip-build
+
+# 3. Full detail 3 computation and golden reference verification
+.build/release/AuraGoldenTests
