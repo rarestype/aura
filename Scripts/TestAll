@@ -10,4 +10,13 @@ swift build -c release --build-tests -Xswiftc -enable-testing
 swift test -c release --skip-build
 
 # 3. Full detail 3 computation and golden reference verification
-.build/release/AuraGoldenTests
+threads=$(\
+    nproc 2>/dev/null || \
+    sysctl -n hw.logicalcpu 2>/dev/null || \
+    getconf _NPROCESSORS_ONLN 2>/dev/null || \
+    echo 4 \
+)
+
+echo "Running golden reference tests with ${threads} threads..."
+
+.build/release/AuraGoldenTests --threads "$threads"
