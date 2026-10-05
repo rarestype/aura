@@ -209,8 +209,8 @@ extension AtmosphereArchive {
             .writeOnly,
             permissions: (.rw, .rw, .r),
             options: [.create, .truncate]
-        ) { descriptor in
-            try compressedBytes.withUnsafeBytes { raw in
+        ) { (descriptor: FileDescriptor) in
+            try compressedBytes.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
                 try descriptor.writeAll(raw)
             }
         }
