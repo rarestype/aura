@@ -191,7 +191,7 @@ extension AuraGoldenTests: AsyncParsableCommand {
                 16 ..< 16 + transmittance.count * 16
             ].withUnsafeBytes { raw in
                 let u32s: UnsafeBufferPointer<UInt32> = raw.bindMemory(to: UInt32.self)
-                return u32s.map { Float(bitPattern: UInt32(bigEndian: $0)) }
+                return u32s.map { .init(bitPattern: UInt32(bigEndian: $0)) }
             }
             transmittance.withUnsafeBytes { raw in
                 let leFloats: UnsafeBufferPointer<Float> = raw.bindMemory(to: Float.self)
@@ -219,7 +219,7 @@ extension AuraGoldenTests: AsyncParsableCommand {
                 16 ..< 16 + irradiance.count * 16
             ].withUnsafeBytes { raw in
                 let u32s: UnsafeBufferPointer<UInt32> = raw.bindMemory(to: UInt32.self)
-                return u32s.map { Float(bitPattern: UInt32(bigEndian: $0)) }
+                return u32s.map { .init(bitPattern: UInt32(bigEndian: $0)) }
             }
             irradiance.withUnsafeBytes { raw in
                 let leFloats: UnsafeBufferPointer<Float> = raw.bindMemory(to: Float.self)
@@ -247,7 +247,7 @@ extension AuraGoldenTests: AsyncParsableCommand {
                 20 ..< 20 + scattering.count * 16
             ].withUnsafeBytes { raw in
                 let u32s: UnsafeBufferPointer<UInt32> = raw.bindMemory(to: UInt32.self)
-                return u32s.map { Float(bitPattern: UInt32(bigEndian: $0)) }
+                return u32s.map { .init(bitPattern: UInt32(bigEndian: $0)) }
             }
             scattering.withUnsafeBytes { raw in
                 let leFloats: UnsafeBufferPointer<Float> = raw.bindMemory(to: Float.self)
