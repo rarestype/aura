@@ -16,11 +16,6 @@ The aura library requires Swift 6.2 or later.
 <!-- DO NOT EDIT BELOW! AUTOSYNC CONTENT [STATUS TABLE] -->
 | Platform | Status |
 | -------- | ------ |
-| 🐧 Linux | [![Status](https://raw.githubusercontent.com/rarestype/aura/refs/badges/ci/Tests/Linux/status.svg)](https://github.com/rarestype/aura/actions/workflows/Tests.yml) |
-| 🍏 Darwin | [![Status](https://raw.githubusercontent.com/rarestype/aura/refs/badges/ci/Tests/macOS/status.svg)](https://github.com/rarestype/aura/actions/workflows/Tests.yml) |
-| 💝 macOS | [![Status](https://raw.githubusercontent.com/rarestype/aura/refs/badges/ci/SemanticRelease/macOS/status.svg)](https://github.com/rarestype/aura/actions/workflows/SemanticRelease.yml) |
-| 💝 Linux (aarch64) | [![Status](https://raw.githubusercontent.com/rarestype/aura/refs/badges/ci/SemanticRelease/Linux-aarch64/status.svg)](https://github.com/rarestype/aura/actions/workflows/SemanticRelease.yml) |
-| 💝 Linux (x86_64) | [![Status](https://raw.githubusercontent.com/rarestype/aura/refs/badges/ci/SemanticRelease/Linux-x86_64/status.svg)](https://github.com/rarestype/aura/actions/workflows/SemanticRelease.yml) |
 <!-- DO NOT EDIT ABOVE! AUTOSYNC CONTENT [STATUS TABLE] -->
 
 [Check deployment minimums](https://swiftinit.org/docs/aura#ss:platform-requirements)
