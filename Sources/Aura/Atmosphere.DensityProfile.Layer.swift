@@ -13,14 +13,15 @@ extension Atmosphere.DensityProfile {
             self.coefficient = coefficients
             self.scale = -1 / H
         }
-
-        subscript(altitude altitude: Double) -> Double {
-            let terms: (Double, Double, Double) = (
-                self.coefficient.exponential * Double.exp(self.scale * altitude),
-                self.coefficient.linear * altitude,
-                self.coefficient.constant
-            )
-            return max(0, min(terms.0 + terms.1 + terms.2, 1))
-        }
+    }
+}
+extension Atmosphere.DensityProfile.Layer {
+    subscript(altitude altitude: Double) -> Double {
+        let terms: (Double, Double, Double) = (
+            self.coefficient.exponential * Double.exp(self.scale * altitude),
+            self.coefficient.linear * altitude,
+            self.coefficient.constant
+        )
+        return max(0, min(terms.0 + terms.1 + terms.2, 1))
     }
 }

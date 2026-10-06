@@ -11,14 +11,14 @@ extension TableEncoder {
         depth: Int = 1,
         bpp: Int = 16
     ) -> [UInt8] {
-        let numPixels: Int = width * height * depth
-        let totalBytes: Int = numPixels * bpp
+        let pixelCount: Int = width * height * depth
+        let totalBytes: Int = pixelCount * bpp
         precondition(
             raw.count >= totalBytes,
             "Raw buffer is smaller than width * height * depth * bpp"
         )
 
-        let rawBytes: UnsafePointer<UInt8> = raw.baseAddress!.assumingMemoryBound(
+        let rawPointer: UnsafePointer<UInt8> = raw.baseAddress!.assumingMemoryBound(
             to: UInt8.self
         )
 
@@ -27,14 +27,14 @@ extension TableEncoder {
         var filtered: [UInt8] = .init(repeating: 0, count: totalBytes)
 
         filtered.withUnsafeMutableBufferPointer { (
-                filteredPtr: inout UnsafeMutableBufferPointer<UInt8>
+                filteredPointer: inout UnsafeMutableBufferPointer<UInt8>
             ) in
             for z: Int in 0 ..< depth {
                 let sliceOffset: Int = z * height * rowBytes
 
                 // Row 0 of this slice: unchanged
                 for b: Int in 0 ..< rowBytes {
-                    filteredPtr[sliceOffset + b] = rawBytes[sliceOffset + b]
+                    filteredPointer[sliceOffset + b] = rawPointer[sliceOffset + b]
                 }
 
                 // Rows 1 ..< height: difference from preceding row
@@ -42,49 +42,30 @@ extension TableEncoder {
                     let rowOffset: Int = sliceOffset + y * rowBytes
                     let prevOffset: Int = rowOffset - rowBytes
                     for b: Int in 0 ..< rowBytes {
-                        filteredPtr[
+                        filteredPointer[
                             rowOffset + b
-                        ] = rawBytes[rowOffset + b] &- rawBytes[prevOffset + b]
+                        ] = rawPointer[rowOffset + b] &- rawPointer[prevOffset + b]
                     }
                 }
             }
         }
 
-        // 2. Byte shuffle: transpose from (numPixels, bpp) to (bpp, numPixels)
+        // 2. Byte shuffle: transpose from (pixelCount, bpp) to (bpp, pixelCount)
         var shuffled: [UInt8] = .init(repeating: 0, count: totalBytes)
-        filtered.withUnsafeBufferPointer { (filteredPtr: UnsafeBufferPointer<UInt8>) in
+        filtered.withUnsafeBufferPointer { (filteredPointer: UnsafeBufferPointer<UInt8>) in
             shuffled.withUnsafeMutableBufferPointer { (
-                    shuffledPtr: inout UnsafeMutableBufferPointer<UInt8>
+                    shuffledPointer: inout UnsafeMutableBufferPointer<UInt8>
                 ) in
                 for p: Int in 0 ..< bpp {
-                    let planeOffset: Int = p * numPixels
-                    for i: Int in 0 ..< numPixels {
-                        shuffledPtr[planeOffset + i] = filteredPtr[i * bpp + p]
+                    let planeOffset: Int = p * pixelCount
+                    for i: Int in 0 ..< pixelCount {
+                        shuffledPointer[planeOffset + i] = filteredPointer[i * bpp + p]
                     }
                 }
             }
         }
 
         return shuffled
-    }
-
-    /// Applies PNG Up filtering and byte shuffling to a 2D or 3D buffer of raw bytes.
-    public static func filterAndShuffle(
-        bytes: [UInt8],
-        width: Int,
-        height: Int,
-        depth: Int = 1,
-        bpp: Int = 16
-    ) -> [UInt8] {
-        bytes.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
-            Self.filterAndShuffle(
-                raw: raw,
-                width: width,
-                height: height,
-                depth: depth,
-                bpp: bpp
-            )
-        }
     }
 
     /// Applies PNG Up filtering and 16-plane byte shuffling to a `SIMD4<Float>` texel buffer.

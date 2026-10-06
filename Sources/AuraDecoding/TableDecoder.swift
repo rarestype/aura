@@ -16,10 +16,10 @@ extension TableDecoder {
             depth: depth,
             bpp: 16
         )
-        let numPixels: Int = width * height * depth
+        let pixelCount: Int = width * height * depth
         return bytes.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
             let bound: UnsafeBufferPointer<SIMD4<Float>> = raw.bindMemory(to: SIMD4<Float>.self)
-            return .init(bound.prefix(numPixels))
+            return .init(bound.prefix(pixelCount))
         }
     }
 
@@ -32,19 +32,19 @@ extension TableDecoder {
         depth: Int = 1,
         bpp: Int = 16
     ) -> [UInt8] {
-        let numPixels: Int = width * height * depth
-        let totalBytes: Int = numPixels * bpp
+        let pixelCount: Int = width * height * depth
+        let totalBytes: Int = pixelCount * bpp
         precondition(
             shuffled.count >= totalBytes,
             "Shuffled buffer is smaller than width * height * depth * bpp"
         )
 
         var output: [UInt8] = .init(repeating: 0, count: totalBytes)
-        shuffled.withUnsafeBufferPointer { (shufPtr: UnsafeBufferPointer<UInt8>) in
-            output.withUnsafeMutableBufferPointer { (outPtr: inout UnsafeMutableBufferPointer<UInt8>) in
+        shuffled.withUnsafeBufferPointer { (shuffledPointer: UnsafeBufferPointer<UInt8>) in
+            output.withUnsafeMutableBufferPointer { (outputPointer: inout UnsafeMutableBufferPointer<UInt8>) in
                 Self.decode(
-                    shuffled: shufPtr,
-                    into: outPtr,
+                    shuffled: shuffledPointer,
+                    into: outputPointer,
                     width: width,
                     height: height,
                     depth: depth,
@@ -65,8 +65,8 @@ extension TableDecoder {
         depth: Int = 1,
         bpp: Int = 16
     ) {
-        let numPixels: Int = width * height * depth
-        let totalBytes: Int = numPixels * bpp
+        let pixelCount: Int = width * height * depth
+        let totalBytes: Int = pixelCount * bpp
         precondition(
             shuffled.count >= totalBytes,
             "Shuffled buffer is smaller than width * height * depth * bpp"
@@ -76,11 +76,11 @@ extension TableDecoder {
             "Output buffer is smaller than width * height * depth * bpp"
         )
 
-        shuffled.withUnsafeBufferPointer { (shufPtr: UnsafeBufferPointer<UInt8>) in
-            output.withUnsafeMutableBufferPointer { (outPtr: inout UnsafeMutableBufferPointer<UInt8>) in
+        shuffled.withUnsafeBufferPointer { (shuffledPointer: UnsafeBufferPointer<UInt8>) in
+            output.withUnsafeMutableBufferPointer { (outputPointer: inout UnsafeMutableBufferPointer<UInt8>) in
                 Self.decode(
-                    shuffled: shufPtr,
-                    into: outPtr,
+                    shuffled: shuffledPointer,
+                    into: outputPointer,
                     width: width,
                     height: height,
                     depth: depth,
@@ -99,23 +99,23 @@ extension TableDecoder {
         height: Int,
         depth: Int = 1
     ) {
-        let numPixels: Int = width * height * depth
-        let totalBytes: Int = numPixels * 16
+        let pixelCount: Int = width * height * depth
+        let totalBytes: Int = pixelCount * 16
         precondition(
             shuffled.count >= totalBytes,
             "Shuffled buffer is smaller than width * height * depth * 16"
         )
         precondition(
-            output.count >= numPixels,
+            output.count >= pixelCount,
             "Output buffer is smaller than width * height * depth"
         )
 
-        output.withUnsafeMutableBytes { (outRaw: UnsafeMutableRawBufferPointer) in
-            let outPtr: UnsafeMutableBufferPointer<UInt8> = outRaw.bindMemory(to: UInt8.self)
-            shuffled.withUnsafeBufferPointer { (shufPtr: UnsafeBufferPointer<UInt8>) in
+        output.withUnsafeMutableBytes { (outputRaw: UnsafeMutableRawBufferPointer) in
+            let outputPointer: UnsafeMutableBufferPointer<UInt8> = outputRaw.bindMemory(to: UInt8.self)
+            shuffled.withUnsafeBufferPointer { (shuffledPointer: UnsafeBufferPointer<UInt8>) in
                 Self.decode(
-                    shuffled: shufPtr,
-                    into: outPtr,
+                    shuffled: shuffledPointer,
+                    into: outputPointer,
                     width: width,
                     height: height,
                     depth: depth,
@@ -134,34 +134,34 @@ extension TableDecoder {
         depth: Int = 1,
         bpp: Int = 16
     ) {
-        let numPixels: Int = width * height * depth
+        let pixelCount: Int = width * height * depth
         let rowBytes: Int = width * bpp
 
-        var pixelIdx: Int = 0
+        var pixelIndex: Int = 0
         for z: Int in 0 ..< depth {
             let sliceOffset: Int = z * height * rowBytes
             for y: Int in 0 ..< height {
                 let rowOffset: Int = sliceOffset + y * rowBytes
-                let prevOffset: Int = rowOffset - rowBytes
+                let previousRowOffset: Int = rowOffset - rowBytes
 
                 if y == 0 {
                     for x: Int in 0 ..< width {
-                        let pxOffset: Int = rowOffset + x * bpp
+                        let pixelOffset: Int = rowOffset + x * bpp
                         for p: Int in 0 ..< bpp {
-                            output[pxOffset + p] = shuffled[p * numPixels + pixelIdx]
+                            output[pixelOffset + p] = shuffled[p * pixelCount + pixelIndex]
                         }
-                        pixelIdx += 1
+                        pixelIndex += 1
                     }
                 } else {
                     for x: Int in 0 ..< width {
-                        let pxOffset: Int = rowOffset + x * bpp
-                        let prevPx: Int = prevOffset + x * bpp
+                        let pixelOffset: Int = rowOffset + x * bpp
+                        let previousPixelOffset: Int = previousRowOffset + x * bpp
                         for p: Int in 0 ..< bpp {
                             output[
-                                pxOffset + p
-                            ] = output[prevPx + p] &+ shuffled[p * numPixels + pixelIdx]
+                                pixelOffset + p
+                            ] = output[previousPixelOffset + p] &+ shuffled[p * pixelCount + pixelIndex]
                         }
-                        pixelIdx += 1
+                        pixelIndex += 1
                     }
                 }
             }

@@ -10,12 +10,13 @@ extension Atmosphere {
             self.layers.0 = lower
             self.layers.1 = upper
         }
-
-        subscript(altitude altitude: Double) -> Double {
-            let layer: Layer = altitude < self.layers.0.thickness
-                ? self.layers.0
-                : self.layers.1
-            return layer[altitude: altitude]
-        }
+    }
+}
+extension Atmosphere.DensityProfile {
+    subscript(altitude altitude: Double) -> Double {
+        let layer: Layer = altitude < self.layers.0.thickness
+            ? self.layers.0
+            : self.layers.1
+        return layer[altitude: altitude]
     }
 }
