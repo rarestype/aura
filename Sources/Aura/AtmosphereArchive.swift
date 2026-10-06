@@ -171,20 +171,20 @@ extension AtmosphereArchive {
 
         // 4. Physical parameters & resolutions
         let parameters: AtmosphereParameters = .init(
-            radius_bottom: .init(atmosphere.radius.bottom),
-            radius_top: .init(atmosphere.radius.top),
-            radius_sun: .init(atmosphere.radius.sun),
-            mu_s_min: .init(atmosphere.μsmin),
-            rayleigh_scattering: .cast(atmosphere.rayleigh.scattering),
-            mie_scattering: .cast(atmosphere.mie.scattering),
-            mie_g: .init(atmosphere.mie.g),
+            radius_bottom: atmosphere.radius.bottom,
+            radius_top: atmosphere.radius.top,
+            radius_sun: atmosphere.radius.sun,
+            mu_s_min: atmosphere.μsmin,
+            rayleigh_scattering: atmosphere.rayleigh.scattering,
+            mie_scattering: atmosphere.mie.scattering,
+            mie_g: atmosphere.mie.g,
             resolution_transmittance: atmosphere.resolution.transmittance,
             resolution_scattering4_R: atmosphere.resolution.scattering4.R,
             resolution_scattering4_M: atmosphere.resolution.scattering4.M,
             resolution_scattering4_MS: atmosphere.resolution.scattering4.MS,
             resolution_scattering4_N: atmosphere.resolution.scattering4.N,
             resolution_irradiance: atmosphere.resolution.irradiance,
-            irradiance: .cast(atmosphere.irradiance)
+            irradiance: atmosphere.irradiance
         )
 
         let descriptor: AtmosphereDescriptor = .init(

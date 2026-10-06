@@ -1,36 +1,36 @@
 import Ion
 
 public struct AtmosphereParameters: Sendable, Equatable {
-    public var radius_bottom: Float
-    public var radius_top: Float
-    public var radius_sun: Float
-    public var mu_s_min: Float
-    var rayleigh_scattering: Vector3<Float>
-    var mie_scattering: Vector3<Float>
-    public var mie_g: Float
+    public var radius_bottom: Double
+    public var radius_top: Double
+    public var radius_sun: Double
+    public var mu_s_min: Double
+    var rayleigh_scattering: Vector3<Double>
+    var mie_scattering: Vector3<Double>
+    public var mie_g: Double
     var resolution_transmittance: Vector2<Int>
     public var resolution_scattering4_R: Int
     public var resolution_scattering4_M: Int
     public var resolution_scattering4_MS: Int
     public var resolution_scattering4_N: Int
     var resolution_irradiance: Vector2<Int>
-    var irradiance: Vector3<Float>
+    var irradiance: Vector3<Double>
 
     init(
-        radius_bottom: Float,
-        radius_top: Float,
-        radius_sun: Float,
-        mu_s_min: Float,
-        rayleigh_scattering: Vector3<Float>,
-        mie_scattering: Vector3<Float>,
-        mie_g: Float,
+        radius_bottom: Double,
+        radius_top: Double,
+        radius_sun: Double,
+        mu_s_min: Double,
+        rayleigh_scattering: Vector3<Double>,
+        mie_scattering: Vector3<Double>,
+        mie_g: Double,
         resolution_transmittance: Vector2<Int>,
         resolution_scattering4_R: Int,
         resolution_scattering4_M: Int,
         resolution_scattering4_MS: Int,
         resolution_scattering4_N: Int,
         resolution_irradiance: Vector2<Int>,
-        irradiance: Vector3<Float>
+        irradiance: Vector3<Double>
     ) {
         self.radius_bottom = radius_bottom
         self.radius_top = radius_top
