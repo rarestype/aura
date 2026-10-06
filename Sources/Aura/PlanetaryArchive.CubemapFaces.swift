@@ -1,7 +1,7 @@
 public import Ion
 
 extension PlanetaryArchive {
-    public struct CubemapFaces: Sendable, Equatable {
+    public struct CubemapFaces: Sendable {
         public var px: [UInt8]
         public var nx: [UInt8]
         public var py: [UInt8]
@@ -51,20 +51,20 @@ extension PlanetaryArchive.CubemapFaces: IonEncodableStruct {
 
 extension PlanetaryArchive.CubemapFaces: IonDecodableStruct {
     public init(ion: borrowing Ion.StructDecoder<CodingKey>) throws {
-        let pxBlob: Ion.BlobView<ArraySlice<UInt8>, Ion.BlobType> = try ion[.px].decode()
-        let nxBlob: Ion.BlobView<ArraySlice<UInt8>, Ion.BlobType> = try ion[.nx].decode()
-        let pyBlob: Ion.BlobView<ArraySlice<UInt8>, Ion.BlobType> = try ion[.py].decode()
-        let nyBlob: Ion.BlobView<ArraySlice<UInt8>, Ion.BlobType> = try ion[.ny].decode()
-        let pzBlob: Ion.BlobView<ArraySlice<UInt8>, Ion.BlobType> = try ion[.pz].decode()
-        let nzBlob: Ion.BlobView<ArraySlice<UInt8>, Ion.BlobType> = try ion[.nz].decode()
+        let px: Ion.BlobView<ArraySlice<UInt8>, Ion.BlobType> = try ion[.px].decode()
+        let nx: Ion.BlobView<ArraySlice<UInt8>, Ion.BlobType> = try ion[.nx].decode()
+        let py: Ion.BlobView<ArraySlice<UInt8>, Ion.BlobType> = try ion[.py].decode()
+        let ny: Ion.BlobView<ArraySlice<UInt8>, Ion.BlobType> = try ion[.ny].decode()
+        let pz: Ion.BlobView<ArraySlice<UInt8>, Ion.BlobType> = try ion[.pz].decode()
+        let nz: Ion.BlobView<ArraySlice<UInt8>, Ion.BlobType> = try ion[.nz].decode()
 
         self.init(
-            px: .init(pxBlob.bytes),
-            nx: .init(nxBlob.bytes),
-            py: .init(pyBlob.bytes),
-            ny: .init(nyBlob.bytes),
-            pz: .init(pzBlob.bytes),
-            nz: .init(nzBlob.bytes)
+            px: [_].init(px.bytes),
+            nx: [_].init(nx.bytes),
+            py: [_].init(py.bytes),
+            ny: [_].init(ny.bytes),
+            pz: [_].init(pz.bytes),
+            nz: [_].init(nz.bytes)
         )
     }
 }

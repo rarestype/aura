@@ -1,6 +1,6 @@
 public import Ion
 
-public struct AtmosphereDescriptor: Sendable, Equatable {
+public struct AtmosphereDescriptor: Sendable {
     public var parameters: AtmosphereParameters
     public var tables: Tables
 

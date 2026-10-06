@@ -1,3 +1,3 @@
-public enum AtmosphereArchiveError: Swift.Error, Sendable, Equatable {
+public enum AtmosphereArchiveError: Error {
     case unsupportedVersion(UInt32)
 }

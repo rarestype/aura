@@ -2,7 +2,7 @@ public import Ion
 import SystemIO
 public import SystemPackage
 
-public struct PlanetaryArchive: Sendable, Equatable {
+public struct PlanetaryArchive: Sendable {
     public static var currentVersion: UInt32 { 2 }
 
     public var version: UInt32
@@ -55,7 +55,7 @@ extension PlanetaryArchive {
     public static func deserialize(from archive: [UInt8]) throws -> PlanetaryArchive {
         let ion: Ion = .init(bytes: archive[...])
         let decoded: PlanetaryArchive = try ion.decode(atomic: PlanetaryArchive.self)
-        guard decoded.version == Self.currentVersion else {
+        if  decoded.version != Self.currentVersion {
             throw PlanetaryArchiveError.unsupportedVersion(decoded.version)
         }
         return decoded

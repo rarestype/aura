@@ -1,7 +1,7 @@
 public import Ion
 
 extension PlanetaryArchive {
-    public struct SurfaceDescriptor: Sendable, Equatable {
+    public struct SurfaceDescriptor: Sendable {
         public var albedo: CubemapFaces
         public var relief: CubemapFaces?
 

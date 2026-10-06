@@ -1,3 +1,3 @@
-public enum PlanetaryArchiveError: Swift.Error, Sendable, Equatable {
+public enum PlanetaryArchiveError: Error {
     case unsupportedVersion(UInt32)
 }

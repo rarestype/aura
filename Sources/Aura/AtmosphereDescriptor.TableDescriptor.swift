@@ -1,7 +1,7 @@
 public import Ion
 
 extension AtmosphereDescriptor {
-    public struct TableDescriptor: Sendable, Equatable {
+    public struct TableDescriptor: Sendable {
         public var width: Int
         public var height: Int
         public var depth: Int?

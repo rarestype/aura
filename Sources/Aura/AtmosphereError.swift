@@ -1,4 +1,4 @@
-public enum AtmosphereError: Error, Sendable {
+public enum AtmosphereError: Error {
     case invalidDetail(Int)
     case invalidConfigFile(String)
 }

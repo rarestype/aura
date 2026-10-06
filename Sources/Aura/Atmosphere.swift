@@ -40,8 +40,6 @@ struct Atmosphere {
         irradiance: Vector2<Int>
     )
 }
-extension Atmosphere: Sendable {}
-
 extension Atmosphere {
 
     // Cap radius between bottom and top of atmosphere

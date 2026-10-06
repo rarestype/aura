@@ -1,4 +1,4 @@
-public enum TableCompressionError: Swift.Error, Sendable, Equatable {
+public enum TableCompressionError: Error {
     case decompressedSizeMismatch(expected: Int, actual: Int)
 }
 

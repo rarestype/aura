@@ -24,4 +24,3 @@ extension Atmosphere.DensityProfile {
         }
     }
 }
-extension Atmosphere.DensityProfile.Layer: Sendable {}

@@ -1,7 +1,7 @@
 public import Ion
 
 extension PlanetaryArchive {
-    public struct SurfaceParameters: Sendable, Equatable {
+    public struct SurfaceParameters: Sendable {
         public var radius: Double
         public var tilt: Double
         public var flattening: Double

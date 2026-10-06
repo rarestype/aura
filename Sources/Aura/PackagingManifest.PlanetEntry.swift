@@ -1,7 +1,7 @@
 public import Ion
 
 extension PackagingManifest {
-    public struct PlanetEntry: Sendable, Equatable {
+    public struct PlanetEntry: Sendable {
         public var name: String
         public var textures: String
         public var atmosphere: String?

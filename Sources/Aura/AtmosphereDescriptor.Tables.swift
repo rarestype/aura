@@ -1,7 +1,7 @@
 public import Ion
 
 extension AtmosphereDescriptor {
-    public struct Tables: Sendable, Equatable {
+    public struct Tables: Sendable {
         public var transmittance: TableDescriptor
         public var scattering: TableDescriptor
         public var irradiance: TableDescriptor

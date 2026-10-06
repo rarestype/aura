@@ -3,7 +3,7 @@ public import Ion
 import SystemIO
 public import SystemPackage
 
-public struct AtmosphereArchive: Sendable, Equatable {
+public struct AtmosphereArchive {
     public static var currentVersion: UInt32 { 1 }
 
     public var version: UInt32

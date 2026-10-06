@@ -1,7 +1,7 @@
 public import Ion
 
 extension PlanetaryArchive {
-    public struct PlanetEntry: Sendable, Equatable {
+    public struct PlanetEntry: Sendable {
         public var name: String
         public var parameters: SurfaceParameters
         public var surface: SurfaceDescriptor
