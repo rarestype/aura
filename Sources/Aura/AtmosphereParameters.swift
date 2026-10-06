@@ -1,36 +1,36 @@
-public import Ion
+import Ion
 
 public struct AtmosphereParameters: Sendable, Equatable {
     public var radius_bottom: Float
     public var radius_top: Float
     public var radius_sun: Float
     public var mu_s_min: Float
-    public var rayleigh_scattering: [Float]
-    public var mie_scattering: [Float]
+    var rayleigh_scattering: Vector3<Float>
+    var mie_scattering: Vector3<Float>
     public var mie_g: Float
-    public var resolution_transmittance: [Int]
+    var resolution_transmittance: Vector2<Int>
     public var resolution_scattering4_R: Int
     public var resolution_scattering4_M: Int
     public var resolution_scattering4_MS: Int
     public var resolution_scattering4_N: Int
-    public var resolution_irradiance: [Int]
-    public var irradiance: [Float]
+    var resolution_irradiance: Vector2<Int>
+    var irradiance: Vector3<Float>
 
-    public init(
+    init(
         radius_bottom: Float,
         radius_top: Float,
         radius_sun: Float,
         mu_s_min: Float,
-        rayleigh_scattering: [Float],
-        mie_scattering: [Float],
+        rayleigh_scattering: Vector3<Float>,
+        mie_scattering: Vector3<Float>,
         mie_g: Float,
-        resolution_transmittance: [Int],
+        resolution_transmittance: Vector2<Int>,
         resolution_scattering4_R: Int,
         resolution_scattering4_M: Int,
         resolution_scattering4_MS: Int,
         resolution_scattering4_N: Int,
-        resolution_irradiance: [Int],
-        irradiance: [Float]
+        resolution_irradiance: Vector2<Int>,
+        irradiance: Vector3<Float>
     ) {
         self.radius_bottom = radius_bottom
         self.radius_top = radius_top

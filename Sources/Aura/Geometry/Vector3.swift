@@ -1,3 +1,5 @@
+import Ion
+
 struct Vector3<Scalar>: Hashable where Scalar: SIMDScalar {
     var storage: SIMD3<Scalar>
 
@@ -462,5 +464,23 @@ extension Vector3 where Scalar: FloatingPoint & ElementaryFunctions {
         let sin: Vector2<Scalar> = .init(.sin(ll.storage)),
         cos: Vector2<Scalar> = .init(.cos(ll.storage))
         self = .extend(.init(cos.y, sin.y) * sin.x, cos.x)
+    }
+}
+
+extension Vector3: IonEncodable, IonEncodableList where Scalar: IonEncodable {
+    func encode(to ion: inout Ion.ListEncoder) {
+        ion[+] = self.x
+        ion[+] = self.y
+        ion[+] = self.z
+    }
+}
+
+extension Vector3: IonDecodable, IonDecodableList where Scalar: IonDecodable {
+    init(ion: inout Ion.ListDecoder) throws {
+        self.init(
+            try ion[+].decode(to: Scalar.self),
+            try ion[+].decode(to: Scalar.self),
+            try ion[+].decode(to: Scalar.self)
+        )
     }
 }

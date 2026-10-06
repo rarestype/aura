@@ -106,8 +106,13 @@ extension AuraCLI {
                 }
             }
 
+            guard let radius: Double = self.radius else {
+                print("Error: Planetary radius in kilometers must be specified via --radius.")
+                throw ExitCode.failure
+            }
+
             let params: PlanetaryArchive.SurfaceParameters = .init(
-                radius: self.radius ?? 1.0,
+                radius: radius,
                 tilt: self.tilt ?? 0.0,
                 flattening: self.flattening ?? 0.0,
                 reliefScale: self.reliefScale ?? 1.0

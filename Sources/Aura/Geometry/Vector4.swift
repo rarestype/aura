@@ -1,3 +1,5 @@
+import Ion
+
 struct Vector4<Scalar>: Hashable where Scalar: SIMDScalar {
     var storage: SIMD4<Scalar>
 
@@ -467,5 +469,25 @@ extension Vector4 where Scalar: FixedWidthInteger {
 extension Vector4 where Scalar: FloatingPoint {
     static func abs(_ v: Self) -> Self {
         .init(v.storage.replacing(with: -v.storage, where: v.storage .< 0))
+    }
+}
+
+extension Vector4: IonEncodable, IonEncodableList where Scalar: IonEncodable {
+    func encode(to ion: inout Ion.ListEncoder) {
+        ion[+] = self.x
+        ion[+] = self.y
+        ion[+] = self.z
+        ion[+] = self.w
+    }
+}
+
+extension Vector4: IonDecodable, IonDecodableList where Scalar: IonDecodable {
+    init(ion: inout Ion.ListDecoder) throws {
+        self.init(
+            try ion[+].decode(to: Scalar.self),
+            try ion[+].decode(to: Scalar.self),
+            try ion[+].decode(to: Scalar.self),
+            try ion[+].decode(to: Scalar.self)
+        )
     }
 }

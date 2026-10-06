@@ -233,9 +233,8 @@ $ion_1_0
 ### Parameter provenance
 
 Where do `radius`, `tilt`, `flattening`, and `relief_scale` come from during packaging?
-1. **In manifest-driven packaging (`aura pack --manifest <path>`):** Explicitly declared under each planet’s `parameters` section.
-2. **In single-body packaging (`aura pack <textures>`):** Provided via optional CLI flags (`--radius`, `--tilt`, `--flattening`, `--relief-scale`).
-3. **Defaults:** If omitted, `radius` defaults to `1.0`, `tilt` to `0.0`, `flattening` to `0.0`, and `relief_scale` to `1.0`. In the live game, the simulation’s `CelestialBodyState` acts as the authoritative ephemeris source for dynamic orbital orientation and position.
+1. **In manifest-driven packaging (`aura pack --manifest <path>`):** Explicitly declared under each planet’s `parameters` section. All four fields (`radius`, `tilt`, `flattening`, and `relief_scale`) are required and fail hard if omitted.
+2. **In single-body packaging (`aura pack <textures>`):** Provided via CLI flags. `--radius` is mandatory. `--tilt`, `--flattening`, and `--relief-scale` default to `0.0`, `0.0`, and `1.0` respectively if omitted. In the live game, the simulation’s `CelestialBodyState` acts as the authoritative ephemeris source for dynamic orbital orientation and position.
 
 ---
 

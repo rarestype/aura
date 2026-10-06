@@ -18,8 +18,14 @@ import Testing
         let config: AtmosphereConfig = try .parse(ion: Self.earth)
         let parameterized: Atmosphere = .from(config: config, resolutions: resolutions)
 
-        #expect(reference.serialized == parameterized.serialized)
+        #expect(reference.radius == parameterized.radius)
+        #expect(reference.rayleigh.scattering == parameterized.rayleigh.scattering)
+        #expect(reference.mie.scattering == parameterized.mie.scattering)
+        #expect(reference.mie.extinction == parameterized.mie.extinction)
+        #expect(reference.mie.g == parameterized.mie.g)
+        #expect(reference.irradiance == parameterized.irradiance)
         #expect(reference.ground == parameterized.ground)
+        #expect(reference.μsmin == parameterized.μsmin)
         #expect(reference.absorption.extinction == parameterized.absorption.extinction)
     }
 
@@ -366,6 +372,33 @@ import Testing
         #expect(manifest.planets[1].name == "The Moon")
         #expect(manifest.planets[1].atmosphere == nil)
         #expect(manifest.planets[1].parameters.radius == 1737.4)
+    }
+
+    @Test static func ManifestMissingRadiusThrows() throws {
+        let badParametersIon: String = """
+        {
+            tilt: 0.0e0,
+            flattening: 0.0e0,
+            relief_scale: 1.0e0
+        }
+        """
+        let ion: Ion = try .parse(atomic: badParametersIon)
+        #expect(throws: (any Error).self) {
+            try ion.decode(atomic: PlanetaryArchive.SurfaceParameters.self)
+        }
+    }
+
+    @Test static func TableCompressionThrowsOnCorrupt() throws {
+        let corrupt: [UInt8] = [0x01, 0x02, 0x03, 0x04]
+        #expect(throws: (any Error).self) {
+            let _: [UInt8] = try TableCompression.decompress(
+                archive: corrupt,
+                width: 16,
+                height: 16,
+                depth: 1,
+                bpp: 16
+            )
+        }
     }
 }
 

@@ -4,7 +4,7 @@ import SystemIO
 public import SystemPackage
 
 public struct AtmosphereArchive: Sendable, Equatable {
-    @inlinable public static var currentVersion: UInt32 { 1 }
+    public static var currentVersion: UInt32 { 1 }
 
     public var version: UInt32
     public var name: String
@@ -54,19 +54,12 @@ extension AtmosphereArchive {
         return .init(ion.bytes)
     }
 
-    /// Deserializes an AtmosphereArchive from binary Ion bytes (supporting legacy Gzip if present).
+    /// Deserializes an AtmosphereArchive from binary Ion bytes.
     public static func deserialize(from archive: [UInt8]) throws -> AtmosphereArchive {
-        let uncompressed: [UInt8]
-        if  archive.starts(with: [0x1f, 0x8b]) {
-            uncompressed = try TableCompression.inflate(archive[...])
-        } else {
-            uncompressed = archive
-        }
-
-        let ion: Ion = .init(bytes: uncompressed[...])
+        let ion: Ion = .init(bytes: archive[...])
         let decoded: AtmosphereArchive = try ion.decode(atomic: AtmosphereArchive.self)
         guard decoded.version == Self.currentVersion else {
-            throw Error.unsupportedVersion(decoded.version)
+            throw AtmosphereArchiveError.unsupportedVersion(decoded.version)
         }
         return decoded
     }
@@ -76,7 +69,7 @@ extension AtmosphereArchive {
         guard let descriptor: AtmosphereDescriptor.TableDescriptor = self.atmosphere.tables[
             tableName
         ] else {
-            throw Error.tableNotFound(tableName)
+            throw AtmosphereArchiveError.tableNotFound(tableName)
         }
 
         let uncompressedShuffled: [UInt8] = try TableCompression.inflate(descriptor.data[...])
@@ -94,7 +87,7 @@ extension AtmosphereArchive {
         table tableName: String
     ) throws -> [SIMD4<Float>] {
         guard planet == self.name else {
-            throw Error.planetNotFound(planet)
+            throw AtmosphereArchiveError.planetNotFound(planet)
         }
         return try self.extractTable(table: tableName)
     }
@@ -177,22 +170,21 @@ extension AtmosphereArchive {
         )
 
         // 4. Physical parameters & resolutions
-        let p: [Float] = atmosphere.serialized.map(Float.init)
         let parameters: AtmosphereParameters = .init(
-            radius_bottom: p[0],
-            radius_top: p[1],
-            radius_sun: p[2],
-            mu_s_min: p[3],
-            rayleigh_scattering: [p[4], p[5], p[6]],
-            mie_scattering: [p[7], p[8], p[9]],
-            mie_g: p[10],
-            resolution_transmittance: [.init(p[11]), .init(p[12])],
-            resolution_scattering4_R: .init(p[13]),
-            resolution_scattering4_M: .init(p[14]),
-            resolution_scattering4_MS: .init(p[15]),
-            resolution_scattering4_N: .init(p[16]),
-            resolution_irradiance: [.init(p[17]), .init(p[18])],
-            irradiance: [p[19], p[20], p[21]]
+            radius_bottom: .init(atmosphere.radius.bottom),
+            radius_top: .init(atmosphere.radius.top),
+            radius_sun: .init(atmosphere.radius.sun),
+            mu_s_min: .init(atmosphere.μsmin),
+            rayleigh_scattering: .cast(atmosphere.rayleigh.scattering),
+            mie_scattering: .cast(atmosphere.mie.scattering),
+            mie_g: .init(atmosphere.mie.g),
+            resolution_transmittance: atmosphere.resolution.transmittance,
+            resolution_scattering4_R: atmosphere.resolution.scattering4.R,
+            resolution_scattering4_M: atmosphere.resolution.scattering4.M,
+            resolution_scattering4_MS: atmosphere.resolution.scattering4.MS,
+            resolution_scattering4_N: atmosphere.resolution.scattering4.N,
+            resolution_irradiance: atmosphere.resolution.irradiance,
+            irradiance: .cast(atmosphere.irradiance)
         )
 
         let descriptor: AtmosphereDescriptor = .init(

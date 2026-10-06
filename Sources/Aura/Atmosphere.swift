@@ -43,40 +43,6 @@ struct Atmosphere {
 extension Atmosphere: Sendable {}
 
 extension Atmosphere {
-    // Serialized parameters for glsl shader
-    var serialized: [Double] {
-        [
-            self.radius.bottom,
-            self.radius.top,
-            self.radius.sun,
-
-            self.μsmin,
-
-            self.rayleigh.scattering.x,
-            self.rayleigh.scattering.y,
-            self.rayleigh.scattering.z,
-
-            self.mie.scattering.x,
-            self.mie.scattering.y,
-            self.mie.scattering.z,
-            self.mie.g,
-
-            .init(self.resolution.transmittance.x),
-            .init(self.resolution.transmittance.y),
-
-            .init(self.resolution.scattering4.R),
-            .init(self.resolution.scattering4.M),
-            .init(self.resolution.scattering4.MS),
-            .init(self.resolution.scattering4.N),
-
-            .init(self.resolution.irradiance.x),
-            .init(self.resolution.irradiance.y),
-
-            self.irradiance.x,
-            self.irradiance.y,
-            self.irradiance.z,
-        ]
-    }
 
     // Cap radius between bottom and top of atmosphere
     private var H: Double {

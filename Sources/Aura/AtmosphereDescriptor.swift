@@ -4,7 +4,7 @@ public struct AtmosphereDescriptor: Sendable, Equatable {
     public var parameters: AtmosphereParameters
     public var tables: Tables
 
-    public init(
+    init(
         parameters: AtmosphereParameters,
         tables: Tables
     ) {

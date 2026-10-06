@@ -166,17 +166,14 @@ public enum TableCompression {
         Self.deflate(data[...], level: level)
     }
 
-    /// Decompresses data using Zlib (RFC 1950) or Gzip (RFC 1952).
+    /// Decompresses data using Zlib (RFC 1950).
     public static func inflate(_ data: ArraySlice<UInt8>) throws -> [UInt8] {
-        if  data.starts(with: [0x1f, 0x8b]) {
-            return try Gzip.extract(from: data)
-        }
         var inflator: LZ77.Inflator = .init(format: .zlib)
         _ = try inflator.push(data)
         return inflator.pull()
     }
 
-    /// Decompresses data using Zlib (RFC 1950) or Gzip (RFC 1952).
+    /// Decompresses data using Zlib (RFC 1950).
     public static func inflate(_ data: [UInt8]) throws -> [UInt8] {
         try Self.inflate(data[...])
     }
@@ -247,13 +244,16 @@ public enum TableCompression {
         height: Int,
         depth: Int = 1,
         bpp: Int = 16
-    ) -> [UInt8] {
+    ) throws -> [UInt8] {
         let numPixels: Int = width * height * depth
         let totalBytes: Int = numPixels * bpp
 
-        guard let shuffled: [UInt8] = try? Self.inflate(archive[...]),
-        shuffled.count == totalBytes else {
-            return []
+        let shuffled: [UInt8] = try Self.inflate(archive[...])
+        guard shuffled.count == totalBytes else {
+            throw TableCompressionError.decompressedSizeMismatch(
+                expected: totalBytes,
+                actual: shuffled.count
+            )
         }
 
         return Self.unshuffleAndUnfilter(
@@ -277,7 +277,7 @@ public enum TableCompression {
 
         let shuffled: [UInt8] = try Self.inflate(archive[...])
         guard shuffled.count == totalBytes else {
-            throw AtmosphereCompressionError.decompressedSizeMismatch(
+            throw TableCompressionError.decompressedSizeMismatch(
                 expected: totalBytes,
                 actual: shuffled.count
             )

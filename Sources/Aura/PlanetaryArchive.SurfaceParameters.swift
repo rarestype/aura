@@ -8,10 +8,10 @@ extension PlanetaryArchive {
         public var reliefScale: Double
 
         public init(
-            radius: Double = 1.0,
-            tilt: Double = 0.0,
-            flattening: Double = 0.0,
-            reliefScale: Double = 1.0
+            radius: Double,
+            tilt: Double,
+            flattening: Double,
+            reliefScale: Double
         ) {
             self.radius = radius
             self.tilt = tilt
@@ -42,10 +42,10 @@ extension PlanetaryArchive.SurfaceParameters: IonEncodableStruct {
 extension PlanetaryArchive.SurfaceParameters: IonDecodableStruct {
     public init(ion: borrowing Ion.StructDecoder<CodingKey>) throws {
         self.init(
-            radius: try ion[.radius]?.decode() ?? 1.0,
-            tilt: try ion[.tilt]?.decode() ?? 0.0,
-            flattening: try ion[.flattening]?.decode() ?? 0.0,
-            reliefScale: try ion[.relief_scale]?.decode() ?? 1.0
+            radius: try ion[.radius].decode(),
+            tilt: try ion[.tilt].decode(),
+            flattening: try ion[.flattening].decode(),
+            reliefScale: try ion[.relief_scale].decode()
         )
     }
 }

@@ -11,7 +11,7 @@ extension PackagingManifest {
             name: String,
             textures: String,
             atmosphere: String? = nil,
-            parameters: PlanetaryArchive.SurfaceParameters = .init()
+            parameters: PlanetaryArchive.SurfaceParameters
         ) {
             self.name = name
             self.textures = textures
@@ -45,7 +45,7 @@ extension PackagingManifest.PlanetEntry: IonDecodableStruct {
             name: try ion[.name].decode(),
             textures: try ion[.textures].decode(),
             atmosphere: try ion[.atmosphere]?.decode(),
-            parameters: try ion[.parameters]?.decode() ?? .init()
+            parameters: try ion[.parameters].decode()
         )
     }
 }

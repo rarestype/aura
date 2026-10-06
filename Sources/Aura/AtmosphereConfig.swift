@@ -43,8 +43,8 @@ public struct AtmosphereConfig: Sendable {
         mie_scale_height: Double,
         mie_scattering: [Double],
         mie_extinction: [Double]? = nil,
-        mie_albedo: Double? = 0.9,
-        mie_g: Double = 0.8,
+        mie_albedo: Double? = nil,
+        mie_g: Double,
         ozone_extinction: [Double]? = nil,
         ozone_altitude: Double? = nil,
         ozone_thickness: Double? = nil,
@@ -118,23 +118,23 @@ extension AtmosphereConfig: IonEncodableStruct {
 extension AtmosphereConfig: IonDecodableStruct {
     public init(ion: borrowing Ion.StructDecoder<CodingKey>) throws {
         self.init(
-            name: try ion[.name]?.decode() ?? "Unnamed",
+            name: try ion[.name].decode(),
             radius_bottom: try ion[.radius_bottom].decode(),
             radius_top: try ion[.radius_top].decode(),
-            sun_angular_radius: try ion[.sun_angular_radius]?.decode() ?? 0.004675,
-            max_sun_zenith_angle: try ion[.max_sun_zenith_angle]?.decode() ?? 102.0,
+            sun_angular_radius: try ion[.sun_angular_radius].decode(),
+            max_sun_zenith_angle: try ion[.max_sun_zenith_angle].decode(),
             rayleigh_scale_height: try ion[.rayleigh_scale_height].decode(),
             rayleigh_scattering: try ion[.rayleigh_scattering].decode(),
             mie_scale_height: try ion[.mie_scale_height].decode(),
             mie_scattering: try ion[.mie_scattering].decode(),
             mie_extinction: try ion[.mie_extinction]?.decode(),
-            mie_albedo: try ion[.mie_albedo]?.decode() ?? 0.9,
-            mie_g: try ion[.mie_g]?.decode() ?? 0.8,
+            mie_albedo: try ion[.mie_albedo]?.decode(),
+            mie_g: try ion[.mie_g].decode(),
             ozone_extinction: try ion[.ozone_extinction]?.decode(),
             ozone_altitude: try ion[.ozone_altitude]?.decode(),
             ozone_thickness: try ion[.ozone_thickness]?.decode(),
             solar_irradiance: try ion[.solar_irradiance].decode(),
-            ground_albedo: try ion[.ground_albedo]?.decode() ?? [0.1, 0.1, 0.1]
+            ground_albedo: try ion[.ground_albedo].decode()
         )
     }
 }
