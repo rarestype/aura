@@ -53,3 +53,15 @@ extension AtmosphereDescriptor.TableDescriptor: IonDecodableStruct {
         )
     }
 }
+
+extension AtmosphereDescriptor.TableDescriptor {
+    /// Decompresses and un-filters byte-shuffled data into reconstructed texels.
+    public func decode() throws -> [SIMD4<Float>] {
+        try TableCompression.decompress(
+            archive: self.data,
+            width: self.width,
+            height: self.height,
+            depth: self.depth ?? 1
+        )
+    }
+}

@@ -209,28 +209,22 @@ import Testing
 
         #expect(deserialized.atmosphere.parameters.radius_bottom == 6360000.0)
 
-        let transmittance: [SIMD4<Float>] = try deserialized.extractTable(
-            table: "transmittance"
-        )
         let transmittanceDescriptor: AtmosphereDescriptor.TableDescriptor = deserialized.atmosphere.tables.transmittance
+        let transmittance: [SIMD4<Float>] = try transmittanceDescriptor.decode()
         #expect(
             transmittance.count == transmittanceDescriptor.width * transmittanceDescriptor.height
         )
 
-        let scattering: [SIMD4<Float>] = try deserialized.extractTable(
-            table: "scattering"
-        )
         let scatteringDescriptor: AtmosphereDescriptor.TableDescriptor = deserialized.atmosphere.tables.scattering
+        let scattering: [SIMD4<Float>] = try scatteringDescriptor.decode()
         #expect(
             scattering.count == scatteringDescriptor.width * scatteringDescriptor.height * (
                 scatteringDescriptor.depth ?? 1
             )
         )
 
-        let irradiance: [SIMD4<Float>] = try deserialized.extractTable(
-            table: "irradiance"
-        )
         let irradianceDescriptor: AtmosphereDescriptor.TableDescriptor = deserialized.atmosphere.tables.irradiance
+        let irradiance: [SIMD4<Float>] = try irradianceDescriptor.decode()
         #expect(irradiance.count == irradianceDescriptor.width * irradianceDescriptor.height)
     }
 

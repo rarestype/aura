@@ -64,34 +64,6 @@ extension AtmosphereArchive {
         return decoded
     }
 
-    /// Extracts and decodes a specific lookup table for this planet.
-    public func extractTable(table tableName: String) throws -> [SIMD4<Float>] {
-        guard let descriptor: AtmosphereDescriptor.TableDescriptor = self.atmosphere.tables[
-            tableName
-        ] else {
-            throw AtmosphereArchiveError.tableNotFound(tableName)
-        }
-
-        let uncompressedShuffled: [UInt8] = try TableCompression.inflate(descriptor.data[...])
-        return AtmosphereTableDecoder.decode(
-            shuffled: uncompressedShuffled,
-            width: descriptor.width,
-            height: descriptor.height,
-            depth: descriptor.depth ?? 1
-        )
-    }
-
-    /// Extracts and decodes a specific lookup table for a planet by name.
-    public func extractTable(
-        for planet: String,
-        table tableName: String
-    ) throws -> [SIMD4<Float>] {
-        guard planet == self.name else {
-            throw AtmosphereArchiveError.planetNotFound(planet)
-        }
-        return try self.extractTable(table: tableName)
-    }
-
     /// Bakes an atmospheric configuration into an uncompressed .atmo archive.
     public static func bake(
         config: AtmosphereConfig,

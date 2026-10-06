@@ -55,9 +55,7 @@ extension AuraGoldenTests: AsyncParsableCommand {
         guard transDesc.width == 256, transDesc.height == 64 else {
             fatalError("Verification failed: Unexpected transmittance resolution!")
         }
-        let transTable: [SIMD4<Float>] = try archive.extractTable(
-            table: "transmittance"
-        )
+        let transTable: [SIMD4<Float>] = try transDesc.decode()
         let transCRC: UInt32 = transTable.withUnsafeBytes { raw in
             CRC32.init(hashing: raw).checksum
         }
@@ -79,9 +77,7 @@ extension AuraGoldenTests: AsyncParsableCommand {
         guard irradDesc.width == 64, irradDesc.height == 16 else {
             fatalError("Verification failed: Unexpected irradiance resolution!")
         }
-        let irradTable: [SIMD4<Float>] = try archive.extractTable(
-            table: "irradiance"
-        )
+        let irradTable: [SIMD4<Float>] = try irradDesc.decode()
         let irradCRC: UInt32 = irradTable.withUnsafeBytes { raw in
             CRC32.init(hashing: raw).checksum
         }
@@ -103,9 +99,7 @@ extension AuraGoldenTests: AsyncParsableCommand {
         guard scatDesc.width == 256, scatDesc.height == 128, scatDesc.depth == 32 else {
             fatalError("Verification failed: Unexpected scattering resolution!")
         }
-        let scatTable: [SIMD4<Float>] = try archive.extractTable(
-            table: "scattering"
-        )
+        let scatTable: [SIMD4<Float>] = try scatDesc.decode()
         let scatCRC: UInt32 = scatTable.withUnsafeBytes { raw in
             CRC32.init(hashing: raw).checksum
         }
@@ -146,9 +140,9 @@ extension AuraGoldenTests: AsyncParsableCommand {
         print("6. Verifying archive serialization and deserialization roundtrip...")
         let archiveBytes: [UInt8] = try archive.serialize()
         let deserialized: AtmosphereArchive = try .deserialize(from: archiveBytes)
-        let reextractedScattering: [SIMD4<Float>] = try deserialized.extractTable(
-            table: "scattering"
-        )
+        let reextractedScattering: [
+            SIMD4<Float>
+        ] = try deserialized.atmosphere.tables.scattering.decode()
         guard reextractedScattering == scatTable else {
             fatalError("Verification failed: Table roundtrip mismatch!")
         }

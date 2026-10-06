@@ -15,15 +15,6 @@ extension AtmosphereDescriptor {
             self.scattering = scattering
             self.irradiance = irradiance
         }
-
-        public subscript(name: String) -> TableDescriptor? {
-            switch name {
-            case "transmittance": self.transmittance
-            case "scattering": self.scattering
-            case "irradiance": self.irradiance
-            default: nil
-            }
-        }
     }
 }
 

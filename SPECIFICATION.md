@@ -448,8 +448,7 @@ public struct PlanetaryArchive: Sendable, Equatable {
 ### Host-side table decompression and extraction
 
 In `AtmosphereDescriptor.Tables`, each table’s `data` contains Deflate-compressed bytes. On the host side:
-1. `TableCompression.inflate(descriptor.data)` decompresses the Deflate stream.
-2. `AtmosphereTableDecoder.decode(shuffled:width:height:depth:)` reverses byte plane shuffling and filtering to yield reconstructed `SIMD4<Float>` texels.
+1. `TableDescriptor.decode()` directly decompresses the Deflate stream via `TableCompression.decompress` and reverses byte plane shuffling/filtering using `AtmosphereTableDecoder.decode(shuffled:width:height:depth:)` to yield reconstructed `SIMD4<Float>` texels.
 
 ### One Type Per File convention
 
@@ -458,7 +457,7 @@ In accordance with the project’s [institutional Swift style guide](file:///swi
 ```
 Sources/Aura/
 ├── AtmosphereArchive.swift
-├── AtmosphereArchive.Error.swift
+├── AtmosphereArchiveError.swift
 ├── AtmosphereDescriptor.swift
 ├── AtmosphereDescriptor.Tables.swift
 ├── AtmosphereDescriptor.TableDescriptor.swift
