@@ -8,6 +8,7 @@ let package: Package = .init(
         .executable(name: "aura", targets: ["AuraCLI"]),
         .library(name: "Aura", targets: ["Aura"]),
         .library(name: "AuraDecoding", targets: ["AuraDecoding"]),
+        .library(name: "AuraEncoding", targets: ["AuraEncoding"]),
     ],
     dependencies: [
         .package(url: "https://github.com/ordo-one/dollup", from: "1.0.1"),
@@ -22,9 +23,16 @@ let package: Package = .init(
             name: "AuraDecoding"
         ),
         .target(
+            name: "AuraEncoding",
+            dependencies: [
+                .product(name: "LZ77", package: "swift-png"),
+            ]
+        ),
+        .target(
             name: "Aura",
             dependencies: [
                 .target(name: "AuraDecoding"),
+                .target(name: "AuraEncoding"),
                 .product(name: "Ion", package: "swift-ion"),
                 .product(name: "LZ77", package: "swift-png"),
             ]
@@ -52,6 +60,7 @@ let package: Package = .init(
             dependencies: [
                 .target(name: "Aura"),
                 .target(name: "AuraDecoding"),
+                .target(name: "AuraEncoding"),
             ]
         ),
     ]

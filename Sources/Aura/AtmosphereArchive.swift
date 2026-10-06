@@ -1,4 +1,4 @@
-import AuraDecoding
+import AuraEncoding
 public import Ion
 
 public struct AtmosphereArchive {
@@ -93,15 +93,13 @@ extension AtmosphereArchive {
             width: atmosphere.resolution.transmittance.x,
             height: atmosphere.resolution.transmittance.y,
             depth: nil,
-            data: TableCompression.deflate(
-                TableCompression.filterAndShuffle(
-                    simd4: table.transmittance.buffer.map {
-                        .init(.init($0.x), .init($0.y), .init($0.z), 1.0)
-                    },
-                    width: atmosphere.resolution.transmittance.x,
-                    height: atmosphere.resolution.transmittance.y,
-                    depth: 1
-                )
+            data: TableEncoder.compress(
+                simd4: table.transmittance.buffer.map {
+                    .init(.init($0.x), .init($0.y), .init($0.z), 1.0)
+                },
+                width: atmosphere.resolution.transmittance.x,
+                height: atmosphere.resolution.transmittance.y,
+                depth: 1
             )
         )
 
@@ -110,15 +108,13 @@ extension AtmosphereArchive {
             width: atmosphere.resolution.scattering.x,
             height: atmosphere.resolution.scattering.y,
             depth: atmosphere.resolution.scattering.z,
-            data: TableCompression.deflate(
-                TableCompression.filterAndShuffle(
-                    simd4: zip(table.scattering.buffer, table.mie.buffer).map {
-                        .init(.init($0.x), .init($0.y), .init($0.z), .init($1.x))
-                    },
-                    width: atmosphere.resolution.scattering.x,
-                    height: atmosphere.resolution.scattering.y,
-                    depth: atmosphere.resolution.scattering.z
-                )
+            data: TableEncoder.compress(
+                simd4: zip(table.scattering.buffer, table.mie.buffer).map {
+                    .init(.init($0.x), .init($0.y), .init($0.z), .init($1.x))
+                },
+                width: atmosphere.resolution.scattering.x,
+                height: atmosphere.resolution.scattering.y,
+                depth: atmosphere.resolution.scattering.z
             )
         )
 
@@ -127,15 +123,13 @@ extension AtmosphereArchive {
             width: atmosphere.resolution.irradiance.x,
             height: atmosphere.resolution.irradiance.y,
             depth: nil,
-            data: TableCompression.deflate(
-                TableCompression.filterAndShuffle(
-                    simd4: table.irradiance.buffer.map {
-                        .init(.init($0.x), .init($0.y), .init($0.z), 1.0)
-                    },
-                    width: atmosphere.resolution.irradiance.x,
-                    height: atmosphere.resolution.irradiance.y,
-                    depth: 1
-                )
+            data: TableEncoder.compress(
+                simd4: table.irradiance.buffer.map {
+                    .init(.init($0.x), .init($0.y), .init($0.z), 1.0)
+                },
+                width: atmosphere.resolution.irradiance.x,
+                height: atmosphere.resolution.irradiance.y,
+                depth: 1
             )
         )
 

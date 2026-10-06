@@ -372,7 +372,7 @@ $ion_1_0
 
 ---
 
-## 8. Swift library API (`Aura` and `AuraDecoding`)
+## 8. Swift library API (`Aura`, `AuraEncoding`, and `AuraDecoding`)
 
 ### Domain separation: `AtmosphereDescriptor` vs `AtmosphereArchive`
 
@@ -448,7 +448,7 @@ public struct PlanetaryArchive: Sendable, Equatable {
 ### Host-side table decompression and extraction
 
 In `AtmosphereDescriptor.Tables`, each table’s `data` contains Deflate-compressed bytes. On the host side:
-1. `TableDescriptor.decode()` directly decompresses the Deflate stream via `TableCompression.decompress` and reverses byte plane shuffling/filtering using `AtmosphereTableDecoder.decode(shuffled:width:height:depth:)` to yield reconstructed `SIMD4<Float>` texels.
+1. `TableDescriptor.decode()` directly decompresses the Deflate stream using `LZ77.Inflator` and reverses byte plane shuffling/filtering using `TableDecoder.decode(shuffled:width:height:depth:)` to yield reconstructed `SIMD4<Float>` texels.
 
 ### One Type Per File convention
 
@@ -461,6 +461,7 @@ Sources/Aura/
 ├── AtmosphereDescriptor.swift
 ├── AtmosphereDescriptor.Tables.swift
 ├── AtmosphereDescriptor.TableDescriptor.swift
+├── AtmosphereDescriptor.TableDescriptor.DecompressionError.swift
 ├── AtmosphereParameters.swift
 ├── AtmosphereConfig.swift
 ├── PlanetaryArchive.swift
@@ -468,7 +469,6 @@ Sources/Aura/
 ├── PlanetaryArchive.SurfaceParameters.swift
 ├── PlanetaryArchive.SurfaceDescriptor.swift
 ├── PlanetaryArchive.CubemapFaces.swift
-├── TableCompression.swift
 └── ...
 ```
 
@@ -511,7 +511,7 @@ extension AtmosphereArchive {
 * **WebAssembly (Swift bridge via `AuraDecoding`):**
   * Never touches texture image bytes.
   * Contains **no compression/inflation dependencies** (keeping Wasm binary footprint small).
-  * Exclusively performs SIMD-accelerated byte-plane deshuffling and PNG Up filter reversal on uncompressed byte buffers via `AtmosphereTableDecoder.decode(...)`.
+  * Exclusively performs SIMD-accelerated byte-plane deshuffling and PNG Up filter reversal on uncompressed byte buffers via `TableDecoder.decode(...)`.
 
 ### JavaScript decoding code
 

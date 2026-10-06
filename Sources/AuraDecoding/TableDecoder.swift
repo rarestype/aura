@@ -1,6 +1,6 @@
-public enum AtmosphereTableDecoder {}
+public enum TableDecoder {}
 
-extension AtmosphereTableDecoder {
+extension TableDecoder {
     /// Inverts byte plane shuffling and PNG Up filtering on a preprocessed buffer,
     /// returning reconstructed `SIMD4<Float>` texels.
     @inlinable public static func decode(
@@ -17,29 +17,7 @@ extension AtmosphereTableDecoder {
             bpp: 16
         )
         let numPixels: Int = width * height * depth
-        return bytes.withUnsafeBytes { raw in
-            let bound: UnsafeBufferPointer<SIMD4<Float>> = raw.bindMemory(to: SIMD4<Float>.self)
-            return .init(bound.prefix(numPixels))
-        }
-    }
-
-    /// Inverts byte plane shuffling and PNG Up filtering on a preprocessed buffer slice,
-    /// returning reconstructed `SIMD4<Float>` texels.
-    @inlinable public static func decode(
-        shuffled: ArraySlice<UInt8>,
-        width: Int,
-        height: Int,
-        depth: Int = 1
-    ) -> [SIMD4<Float>] {
-        let bytes: [UInt8] = Self.decode(
-            shuffled: shuffled,
-            width: width,
-            height: height,
-            depth: depth,
-            bpp: 16
-        )
-        let numPixels: Int = width * height * depth
-        return bytes.withUnsafeBytes { raw in
+        return bytes.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
             let bound: UnsafeBufferPointer<SIMD4<Float>> = raw.bindMemory(to: SIMD4<Float>.self)
             return .init(bound.prefix(numPixels))
         }
@@ -62,40 +40,8 @@ extension AtmosphereTableDecoder {
         )
 
         var output: [UInt8] = .init(repeating: 0, count: totalBytes)
-        shuffled.withUnsafeBufferPointer { shufPtr in
-            output.withUnsafeMutableBufferPointer { outPtr in
-                Self.decode(
-                    shuffled: shufPtr,
-                    into: outPtr,
-                    width: width,
-                    height: height,
-                    depth: depth,
-                    bpp: bpp
-                )
-            }
-        }
-        return output
-    }
-
-    /// Inverts byte plane shuffling and PNG Up filtering on a preprocessed buffer slice,
-    /// returning raw unmarshaled bytes.
-    @inlinable public static func decode(
-        shuffled: ArraySlice<UInt8>,
-        width: Int,
-        height: Int,
-        depth: Int = 1,
-        bpp: Int = 16
-    ) -> [UInt8] {
-        let numPixels: Int = width * height * depth
-        let totalBytes: Int = numPixels * bpp
-        precondition(
-            shuffled.count >= totalBytes,
-            "Shuffled buffer is smaller than width * height * depth * bpp"
-        )
-
-        var output: [UInt8] = .init(repeating: 0, count: totalBytes)
-        shuffled.withUnsafeBufferPointer { shufPtr in
-            output.withUnsafeMutableBufferPointer { outPtr in
+        shuffled.withUnsafeBufferPointer { (shufPtr: UnsafeBufferPointer<UInt8>) in
+            output.withUnsafeMutableBufferPointer { (outPtr: inout UnsafeMutableBufferPointer<UInt8>) in
                 Self.decode(
                     shuffled: shufPtr,
                     into: outPtr,
@@ -130,8 +76,8 @@ extension AtmosphereTableDecoder {
             "Output buffer is smaller than width * height * depth * bpp"
         )
 
-        shuffled.withUnsafeBufferPointer { shufPtr in
-            output.withUnsafeMutableBufferPointer { outPtr in
+        shuffled.withUnsafeBufferPointer { (shufPtr: UnsafeBufferPointer<UInt8>) in
+            output.withUnsafeMutableBufferPointer { (outPtr: inout UnsafeMutableBufferPointer<UInt8>) in
                 Self.decode(
                     shuffled: shufPtr,
                     into: outPtr,
@@ -164,9 +110,9 @@ extension AtmosphereTableDecoder {
             "Output buffer is smaller than width * height * depth"
         )
 
-        output.withUnsafeMutableBytes { outRaw in
+        output.withUnsafeMutableBytes { (outRaw: UnsafeMutableRawBufferPointer) in
             let outPtr: UnsafeMutableBufferPointer<UInt8> = outRaw.bindMemory(to: UInt8.self)
-            shuffled.withUnsafeBufferPointer { shufPtr in
+            shuffled.withUnsafeBufferPointer { (shufPtr: UnsafeBufferPointer<UInt8>) in
                 Self.decode(
                     shuffled: shufPtr,
                     into: outPtr,

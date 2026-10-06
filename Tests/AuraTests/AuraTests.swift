@@ -1,5 +1,6 @@
 @testable import Aura
 import AuraDecoding
+import AuraEncoding
 import Ion
 import Testing
 
@@ -61,7 +62,7 @@ import Testing
             }
         }
 
-        let compressed: [UInt8] = TableCompression.compress(
+        let compressed: [UInt8] = TableEncoder.compress(
             simd4: data,
             width: width,
             height: height,
@@ -70,12 +71,13 @@ import Testing
 
         #expect(compressed.count < data.count * MemoryLayout<SIMD4<Float>>.size)
 
-        let decompressed: [SIMD4<Float>] = try TableCompression.decompress(
-            archive: compressed,
+        let descriptor: AtmosphereDescriptor.TableDescriptor = .init(
             width: width,
             height: height,
-            depth: depth
+            depth: depth,
+            data: compressed
         )
+        let decompressed: [SIMD4<Float>] = try descriptor.decode()
 
         #expect(decompressed.count == data.count)
         #expect(decompressed == data)
@@ -96,25 +98,26 @@ import Testing
             }
         }
 
-        let compressed: [UInt8] = TableCompression.compress(
+        let compressed: [UInt8] = TableEncoder.compress(
             simd4: data,
             width: width,
             height: height,
             depth: 1
         )
 
-        let decompressed: [SIMD4<Float>] = try TableCompression.decompress(
-            archive: compressed,
+        let descriptor: AtmosphereDescriptor.TableDescriptor = .init(
             width: width,
             height: height,
-            depth: 1
+            depth: 1,
+            data: compressed
         )
+        let decompressed: [SIMD4<Float>] = try descriptor.decode()
 
         #expect(decompressed.count == data.count)
         #expect(decompressed == data)
     }
 
-    @Test static func AtmosphereTableDecoderDirect() throws {
+    @Test static func TableDecoderDirect() throws {
         let width: Int = 16
         let height: Int = 8
         let depth: Int = 2
@@ -128,14 +131,14 @@ import Testing
             }
         }
 
-        let shuffled: [UInt8] = TableCompression.filterAndShuffle(
+        let shuffled: [UInt8] = TableEncoder.filterAndShuffle(
             simd4: data,
             width: width,
             height: height,
             depth: depth
         )
 
-        let decoded: [SIMD4<Float>] = AtmosphereTableDecoder.decode(
+        let decoded: [SIMD4<Float>] = TableDecoder.decode(
             shuffled: shuffled,
             width: width,
             height: height,
@@ -148,7 +151,7 @@ import Testing
             repeating: .zero,
             count: width * height * depth
         )
-        AtmosphereTableDecoder.decode(
+        TableDecoder.decode(
             shuffled: shuffled,
             into: &inoutDecoded,
             width: width,
@@ -158,7 +161,7 @@ import Testing
         #expect(inoutDecoded == data)
 
         var rawBytesDecoded: [UInt8] = .init(repeating: 0, count: width * height * depth * 16)
-        AtmosphereTableDecoder.decode(
+        TableDecoder.decode(
             shuffled: shuffled,
             into: &rawBytesDecoded,
             width: width,
@@ -337,16 +340,16 @@ import Testing
         }
     }
 
-    @Test static func TableCompressionThrowsOnCorrupt() throws {
+    @Test static func TableDecompressionThrowsOnCorrupt() throws {
         let corrupt: [UInt8] = [0x01, 0x02, 0x03, 0x04]
+        let descriptor: AtmosphereDescriptor.TableDescriptor = .init(
+            width: 16,
+            height: 16,
+            depth: 1,
+            data: corrupt
+        )
         #expect(throws: (any Error).self) {
-            let _: [UInt8] = try TableCompression.decompress(
-                archive: corrupt,
-                width: 16,
-                height: 16,
-                depth: 1,
-                bpp: 16
-            )
+            _ = try descriptor.decode()
         }
     }
 }

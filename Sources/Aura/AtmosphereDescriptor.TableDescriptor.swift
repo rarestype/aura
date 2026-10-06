@@ -1,4 +1,6 @@
+import AuraDecoding
 public import Ion
+import LZ77
 
 extension AtmosphereDescriptor {
     public struct TableDescriptor: Sendable {
@@ -57,11 +59,26 @@ extension AtmosphereDescriptor.TableDescriptor: IonDecodableStruct {
 extension AtmosphereDescriptor.TableDescriptor {
     /// Decompresses and un-filters byte-shuffled data into reconstructed texels.
     public func decode() throws -> [SIMD4<Float>] {
-        try TableCompression.decompress(
-            archive: self.data,
+        let depth: Int = self.depth ?? 1
+        let numPixels: Int = self.width * self.height * depth
+        let totalBytes: Int = numPixels * 16
+
+        var inflator: LZ77.Inflator = .init(format: .zlib)
+        _ = try inflator.push(self.data[...])
+        let shuffled: [UInt8] = inflator.pull()
+
+        guard shuffled.count == totalBytes else {
+            throw DecompressionError.decompressedSizeMismatch(
+                expected: totalBytes,
+                actual: shuffled.count
+            )
+        }
+
+        return TableDecoder.decode(
+            shuffled: shuffled,
             width: self.width,
             height: self.height,
-            depth: self.depth ?? 1
+            depth: depth
         )
     }
 }
