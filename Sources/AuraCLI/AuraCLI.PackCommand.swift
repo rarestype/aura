@@ -9,66 +9,64 @@ extension AuraCLI {
             .init(
                 commandName: "pack",
                 abstract: """
-                Assembles surface textures, physical parameters, and optional .atmo atmosphere intermediates into a .aura archive.
+                Assembles surface textures, physical parameters, and optional .atmo atmosphere intermediates into a .aura archive
                 """
             )
         }
 
         @Argument(
             help: """
-            Directory containing surface cubemap faces (px.webp, nx.webp, py.webp, ny.webp, pz.webp, nz.webp).
+            Directory containing surface cubemap faces (px.webp, nx.webp, py.webp, ny.webp, pz.webp, nz.webp)
             """
         ) var textures: String?
 
         @Option(
             name: .customLong("manifest"),
-            help: "Path to an assembly manifest Ion file."
+            help: "Path to an assembly manifest Ion file"
         ) var manifest: String?
 
         @Option(
             name: .customLong("name"),
-            help: "Planet name (defaults to texture directory name)."
+            help: "Planet name (defaults to texture directory name)"
         ) var name: String?
 
         @Option(
             name: .customLong("atmosphere"),
-            help: "Path to .atmo intermediate file."
+            help: "Path to .atmo intermediate file"
         ) var atmosphere: String?
 
         @Option(
             name: .customLong("relief-scale"),
-            help: "Relief elevation scale."
+            help: "Relief elevation scale"
         ) var reliefScale: Double?
 
         @Option(
             name: .customLong("radius"),
-            help: "Body radius in kilometers."
+            help: "Body radius in kilometers"
         ) var radius: Double?
 
         @Option(
             name: .customLong("tilt"),
-            help: "Axial tilt in radians."
+            help: "Axial tilt in radians"
         ) var tilt: Double?
 
         @Option(
             name: .customLong("flattening"),
-            help: "Geometric flattening."
+            help: "Geometric flattening"
         ) var flattening: Double?
 
         @Option(
             name: [.customLong("output"), .customShort("o")],
-            help: "Destination .aura file path."
+            help: "Destination .aura file path"
         ) var output: String?
 
         mutating func run() throws {
             // Mutual exclusion check
             if  self.manifest != nil && self.textures != nil {
-                print("Error: Positional textures and --manifest are mutually exclusive.")
-                throw ExitCode.failure
+                throw ValidationError("Positional textures and --manifest are mutually exclusive")
             }
             if  self.manifest == nil && self.textures == nil {
-                print("Error: Either positional textures or --manifest must be provided.")
-                throw ExitCode.failure
+                throw ValidationError("Either positional textures or --manifest must be provided")
             }
 
             if  let manifestPathString: String = self.manifest {
@@ -93,22 +91,19 @@ extension AuraCLI {
             if  let atmoString: String = self.atmosphere {
                 let atmoPath: FilePath = .init(atmoString)
                 guard (try? atmoPath.exists) == true else {
-                    print("Error: Atmosphere intermediate not found at '\(atmoString)'")
-                    throw ExitCode.failure
+                    throw ValidationError("Atmosphere intermediate not found at '\(atmoString)'")
                 }
                 do {
                     let atmoBytes: [UInt8] = try atmoPath.read([UInt8].self)
                     let atmoArchive: AtmosphereArchive = try .deserialize(from: atmoBytes)
                     atmosphereDescriptor = atmoArchive.atmosphere
                 } catch {
-                    print("Error: Atmosphere intermediate not found at '\(atmoString)'")
-                    throw ExitCode.failure
+                    throw ValidationError("Atmosphere intermediate not found at '\(atmoString)'")
                 }
             }
 
             guard let radius: Double = self.radius else {
-                print("Error: Planetary radius in kilometers must be specified via --radius.")
-                throw ExitCode.failure
+                throw ValidationError("Planetary radius in kilometers must be specified via --radius")
             }
 
             let params: PlanetaryArchive.SurfaceParameters = .init(
@@ -146,8 +141,7 @@ extension AuraCLI {
         private func runManifestMode(manifestPathString: String) throws {
             let manifestPath: FilePath = .init(manifestPathString)
             guard (try? manifestPath.exists) == true else {
-                print("Error: Manifest file not found at '\(manifestPathString)'")
-                throw ExitCode.failure
+                throw ValidationError("Manifest file not found at '\(manifestPathString)'")
             }
 
             let manifest: PackagingManifest = try PackagingManifest.load(from: manifestPath)
@@ -178,16 +172,14 @@ extension AuraCLI {
                         relativeTo: manifestDir
                     )
                     guard (try? atmoPath.exists) == true else {
-                        print("Error: Atmosphere intermediate not found at '\(atmoRel)'")
-                        throw ExitCode.failure
+                        throw ValidationError("Atmosphere intermediate not found at '\(atmoRel)'")
                     }
                     do {
                         let atmoBytes: [UInt8] = try atmoPath.read([UInt8].self)
                         let atmoArchive: AtmosphereArchive = try .deserialize(from: atmoBytes)
                         atmosphereDescriptor = atmoArchive.atmosphere
                     } catch {
-                        print("Error: Atmosphere intermediate not found at '\(atmoRel)'")
-                        throw ExitCode.failure
+                        throw ValidationError("Atmosphere intermediate not found at '\(atmoRel)'")
                     }
                 }
 
@@ -238,14 +230,9 @@ extension AuraCLI {
             }
 
             if !missing.isEmpty {
-                print(
-                    """
-                    Error: Missing required albedo faces in '\(texturesDir)': [\(
-                        missing.joined(separator: ", ")
-                    )]
-                    """
+                throw ValidationError(
+                    "Missing required albedo faces in '\(texturesDir)': [\(missing.joined(separator: ", "))]"
                 )
-                throw ExitCode.failure
             }
 
             return .init(
@@ -287,14 +274,9 @@ extension AuraCLI {
             }
 
             if !missing.isEmpty {
-                print(
-                    """
-                    Error: Incomplete relief normal map in '\(reliefDir)': missing [\(
-                        missing.joined(separator: ", ")
-                    )]
-                    """
+                throw ValidationError(
+                    "Incomplete relief normal map in '\(reliefDir)': missing [\(missing.joined(separator: ", "))]"
                 )
-                throw ExitCode.failure
             }
 
             return .init(

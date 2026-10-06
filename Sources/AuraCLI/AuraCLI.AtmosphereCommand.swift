@@ -37,18 +37,14 @@ extension AuraCLI {
 
         mutating func run() async throws {
             guard !self.configs.isEmpty else {
-                print("Error: No configuration files specified.")
-                throw ExitCode.failure
+                throw ValidationError.init("No configuration files specified")
             }
 
             if self.configs.count > 1 {
                 if let output: String = self.output, output.hasSuffix(".atmo") {
-                    print(
-                        """
-                        Error: Output must be a directory when multiple atmosphere configs are provided.
-                        """
+                    throw ValidationError.init(
+                        "Output must be a directory when multiple atmosphere configs are provided"
                     )
-                    throw ExitCode.failure
                 }
             }
 
