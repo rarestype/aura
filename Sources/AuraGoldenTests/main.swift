@@ -31,21 +31,15 @@ extension AuraGoldenTests: AsyncParsableCommand {
         let clock: ContinuousClock = .init()
         let start: ContinuousClock.Instant = clock.now
         let archive: AtmosphereArchive = try await .bake(
-            configs: [config],
+            config: config,
             workers: self.threads,
             detail: 3
         )
         let elapsed: Duration = start.duration(to: clock.now)
         print("   Detail 3 precomputation finished in \(elapsed)!")
 
-        guard let earthEntry: AtmosphereArchive.PlanetEntry = archive.manifest.planets[
-            "Earth"
-        ] else {
-            fatalError("Verification failed: Earth entry missing in manifest!")
-        }
-
         print("3. Verifying physical parameters...")
-        let params: AtmosphereParameters = earthEntry.parameters
+        let params: AtmosphereParameters = archive.atmosphere.parameters
         guard params.radius_bottom == 6360000.0,
         params.radius_top == 6420000.0,
         abs(params.mu_s_min - -0.20791169) < 1e-6,
@@ -57,14 +51,11 @@ extension AuraGoldenTests: AsyncParsableCommand {
         print("4. Extracting tables and checking CRC32 against golden reference...")
 
         // Transmittance
-        guard let transDesc: AtmosphereArchive.TableDescriptor = earthEntry.tables[
-            "transmittance"
-        ],
-        transDesc.width == 256, transDesc.height == 64 else {
+        let transDesc: AtmosphereDescriptor.TableDescriptor = archive.atmosphere.tables.transmittance
+        guard transDesc.width == 256, transDesc.height == 64 else {
             fatalError("Verification failed: Unexpected transmittance resolution!")
         }
         let transTable: [SIMD4<Float>] = try archive.extractTable(
-            for: "Earth",
             table: "transmittance"
         )
         let transCRC: UInt32 = transTable.withUnsafeBytes { raw in
@@ -84,14 +75,11 @@ extension AuraGoldenTests: AsyncParsableCommand {
         }
 
         // Irradiance
-        guard let irradDesc: AtmosphereArchive.TableDescriptor = earthEntry.tables[
-            "irradiance"
-        ],
-        irradDesc.width == 64, irradDesc.height == 16 else {
+        let irradDesc: AtmosphereDescriptor.TableDescriptor = archive.atmosphere.tables.irradiance
+        guard irradDesc.width == 64, irradDesc.height == 16 else {
             fatalError("Verification failed: Unexpected irradiance resolution!")
         }
         let irradTable: [SIMD4<Float>] = try archive.extractTable(
-            for: "Earth",
             table: "irradiance"
         )
         let irradCRC: UInt32 = irradTable.withUnsafeBytes { raw in
@@ -111,12 +99,11 @@ extension AuraGoldenTests: AsyncParsableCommand {
         }
 
         // Scattering
-        guard let scatDesc: AtmosphereArchive.TableDescriptor = earthEntry.tables["scattering"],
-        scatDesc.width == 256, scatDesc.height == 128, scatDesc.depth == 32 else {
+        let scatDesc: AtmosphereDescriptor.TableDescriptor = archive.atmosphere.tables.scattering
+        guard scatDesc.width == 256, scatDesc.height == 128, scatDesc.depth == 32 else {
             fatalError("Verification failed: Unexpected scattering resolution!")
         }
         let scatTable: [SIMD4<Float>] = try archive.extractTable(
-            for: "Earth",
             table: "scattering"
         )
         let scatCRC: UInt32 = scatTable.withUnsafeBytes { raw in
@@ -157,10 +144,9 @@ extension AuraGoldenTests: AsyncParsableCommand {
         }
 
         print("6. Verifying archive serialization and deserialization roundtrip...")
-        let compressedBytes: [UInt8] = try archive.serialize()
-        let deserialized: AtmosphereArchive = try .deserialize(from: compressedBytes)
+        let archiveBytes: [UInt8] = try archive.serialize()
+        let deserialized: AtmosphereArchive = try .deserialize(from: archiveBytes)
         let reextractedScattering: [SIMD4<Float>] = try deserialized.extractTable(
-            for: "Earth",
             table: "scattering"
         )
         guard reextractedScattering == scatTable else {
@@ -169,7 +155,7 @@ extension AuraGoldenTests: AsyncParsableCommand {
         print(
             """
                Archive serialized (\(
-                compressedBytes.count
+                archiveBytes.count
             ) bytes) and deserialized successfully!
             """
         )

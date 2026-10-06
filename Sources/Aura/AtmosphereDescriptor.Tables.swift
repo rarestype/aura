@@ -1,22 +1,22 @@
 public import Ion
 
-extension AtmosphereArchive.PlanetEntry {
+extension AtmosphereDescriptor {
     public struct Tables: Sendable, Equatable {
-        public var transmittance: AtmosphereArchive.TableDescriptor
-        public var scattering: AtmosphereArchive.TableDescriptor
-        public var irradiance: AtmosphereArchive.TableDescriptor
+        public var transmittance: TableDescriptor
+        public var scattering: TableDescriptor
+        public var irradiance: TableDescriptor
 
         public init(
-            transmittance: AtmosphereArchive.TableDescriptor,
-            scattering: AtmosphereArchive.TableDescriptor,
-            irradiance: AtmosphereArchive.TableDescriptor
+            transmittance: TableDescriptor,
+            scattering: TableDescriptor,
+            irradiance: TableDescriptor
         ) {
             self.transmittance = transmittance
             self.scattering = scattering
             self.irradiance = irradiance
         }
 
-        public subscript(name: String) -> AtmosphereArchive.TableDescriptor? {
+        public subscript(name: String) -> TableDescriptor? {
             switch name {
             case "transmittance": self.transmittance
             case "scattering": self.scattering
@@ -27,7 +27,7 @@ extension AtmosphereArchive.PlanetEntry {
     }
 }
 
-extension AtmosphereArchive.PlanetEntry.Tables {
+extension AtmosphereDescriptor.Tables {
     @frozen public enum CodingKey: String, IonSymbolizable {
         case transmittance
         case scattering
@@ -35,7 +35,7 @@ extension AtmosphereArchive.PlanetEntry.Tables {
     }
 }
 
-extension AtmosphereArchive.PlanetEntry.Tables: IonEncodableStruct {
+extension AtmosphereDescriptor.Tables: IonEncodableStruct {
     public func encode(to ion: inout Ion.StructEncoder<CodingKey>) {
         ion[.transmittance] = self.transmittance
         ion[.scattering] = self.scattering
@@ -43,7 +43,7 @@ extension AtmosphereArchive.PlanetEntry.Tables: IonEncodableStruct {
     }
 }
 
-extension AtmosphereArchive.PlanetEntry.Tables: IonDecodableStruct {
+extension AtmosphereDescriptor.Tables: IonDecodableStruct {
     public init(ion: borrowing Ion.StructDecoder<CodingKey>) throws {
         self.init(
             transmittance: try ion[.transmittance].decode(),

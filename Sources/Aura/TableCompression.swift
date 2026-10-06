@@ -1,7 +1,7 @@
 import AuraDecoding
 import LZ77
 
-public enum AtmosphereCompression {
+public enum TableCompression {
     /// Applies PNG Up filtering and 16-plane byte shuffling to a 2D or 3D buffer of raw bytes.
     public static func filterAndShuffle(
         bytes: [UInt8],
@@ -150,18 +150,39 @@ public enum AtmosphereCompression {
         )
     }
 
-    /// Compresses data using Gzip (deflate).
+    /// Compresses data using Zlib (RFC 1950).
     public static func deflate(_ data: ArraySlice<UInt8>, level: Int = 7) -> [UInt8] {
-        Gzip.archive(bytes: data, level: level)
+        var deflator: LZ77.Deflator = .init(format: .zlib, level: level, hint: 128 << 10)
+        deflator.push(data, last: true)
+        var compressed: [UInt8] = []
+        while let part: [UInt8] = deflator.pull() {
+            compressed += part
+        }
+        return compressed
     }
 
-    /// Decompresses data using Gzip (inflate).
+    /// Compresses data using Zlib (RFC 1950).
+    public static func deflate(_ data: [UInt8], level: Int = 7) -> [UInt8] {
+        Self.deflate(data[...], level: level)
+    }
+
+    /// Decompresses data using Zlib (RFC 1950) or Gzip (RFC 1952).
     public static func inflate(_ data: ArraySlice<UInt8>) throws -> [UInt8] {
-        try Gzip.extract(from: data)
+        if  data.starts(with: [0x1f, 0x8b]) {
+            return try Gzip.extract(from: data)
+        }
+        var inflator: LZ77.Inflator = .init(format: .zlib)
+        _ = try inflator.push(data)
+        return inflator.pull()
+    }
+
+    /// Decompresses data using Zlib (RFC 1950) or Gzip (RFC 1952).
+    public static func inflate(_ data: [UInt8]) throws -> [UInt8] {
+        try Self.inflate(data[...])
     }
 
     /// Compresses a 2D or 3D volume buffer of raw bytes using PNG Up filtering,
-    /// byte-plane shuffling, and Gzip compression.
+    /// byte-plane shuffling, and Deflate compression.
     public static func compress(
         bytes: [UInt8],
         width: Int,
@@ -175,7 +196,7 @@ public enum AtmosphereCompression {
     }
 
     /// Compresses a 2D or 3D volume slice of raw bytes using PNG Up filtering,
-    /// byte-plane shuffling, and Gzip compression.
+    /// byte-plane shuffling, and Deflate compression.
     public static func compress(
         bytes: ArraySlice<UInt8>,
         width: Int,
@@ -189,7 +210,7 @@ public enum AtmosphereCompression {
     }
 
     /// Compresses a 2D or 3D volume buffer using PNG Up filtering,
-    /// byte-plane shuffling, and Gzip compression.
+    /// byte-plane shuffling, and Deflate compression.
     internal static func compress(
         raw: UnsafeRawBufferPointer,
         width: Int,
@@ -226,16 +247,13 @@ public enum AtmosphereCompression {
         height: Int,
         depth: Int = 1,
         bpp: Int = 16
-    ) throws -> [UInt8] {
+    ) -> [UInt8] {
         let numPixels: Int = width * height * depth
         let totalBytes: Int = numPixels * bpp
 
-        let shuffled: [UInt8] = try Self.inflate(archive[...])
-        guard shuffled.count == totalBytes else {
-            throw AtmosphereCompressionError.decompressedSizeMismatch(
-                expected: totalBytes,
-                actual: shuffled.count
-            )
+        guard let shuffled: [UInt8] = try? Self.inflate(archive[...]),
+        shuffled.count == totalBytes else {
+            return []
         }
 
         return Self.unshuffleAndUnfilter(
@@ -254,17 +272,25 @@ public enum AtmosphereCompression {
         height: Int,
         depth: Int = 1
     ) throws -> [SIMD4<Float>] {
-        let bytes: [UInt8] = try Self.decompress(
-            archive: archive,
+        let numPixels: Int = width * height * depth
+        let totalBytes: Int = numPixels * 16
+
+        let shuffled: [UInt8] = try Self.inflate(archive[...])
+        guard shuffled.count == totalBytes else {
+            throw AtmosphereCompressionError.decompressedSizeMismatch(
+                expected: totalBytes,
+                actual: shuffled.count
+            )
+        }
+
+        return Self.unshuffleAndUnfilter(
+            shuffled: shuffled,
             width: width,
             height: height,
-            depth: depth,
-            bpp: 16
+            depth: depth
         )
-        let numPixels: Int = width * height * depth
-        return bytes.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
-            let bound: UnsafeBufferPointer<SIMD4<Float>> = raw.bindMemory(to: SIMD4<Float>.self)
-            return .init(bound.prefix(numPixels))
-        }
     }
 }
+
+@available(*, deprecated, renamed: "TableCompression")
+public typealias AtmosphereCompression = TableCompression

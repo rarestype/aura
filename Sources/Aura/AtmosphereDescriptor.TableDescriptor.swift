@@ -1,6 +1,6 @@
 public import Ion
 
-extension AtmosphereArchive {
+extension AtmosphereDescriptor {
     public struct TableDescriptor: Sendable, Equatable {
         public var width: Int
         public var height: Int
@@ -21,7 +21,7 @@ extension AtmosphereArchive {
     }
 }
 
-extension AtmosphereArchive.TableDescriptor {
+extension AtmosphereDescriptor.TableDescriptor {
     @frozen public enum CodingKey: String, IonSymbolizable {
         case width
         case height
@@ -30,7 +30,7 @@ extension AtmosphereArchive.TableDescriptor {
     }
 }
 
-extension AtmosphereArchive.TableDescriptor: IonEncodableStruct {
+extension AtmosphereDescriptor.TableDescriptor: IonEncodableStruct {
     public func encode(to ion: inout Ion.StructEncoder<CodingKey>) {
         ion[.width] = self.width
         ion[.height] = self.height
@@ -39,7 +39,7 @@ extension AtmosphereArchive.TableDescriptor: IonEncodableStruct {
     }
 }
 
-extension AtmosphereArchive.TableDescriptor: IonDecodableStruct {
+extension AtmosphereDescriptor.TableDescriptor: IonDecodableStruct {
     public init(ion: borrowing Ion.StructDecoder<CodingKey>) throws {
         let width: Int = try ion[.width].decode()
         let height: Int = try ion[.height].decode()
