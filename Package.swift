@@ -26,15 +26,15 @@ let package: Package = .init(
             dependencies: [
                 .target(name: "AuraDecoding"),
                 .product(name: "Ion", package: "swift-ion"),
-                .product(name: "IonText", package: "swift-ion"),
                 .product(name: "LZ77", package: "swift-png"),
-                .product(name: "SystemIO", package: "swift-io"),
             ]
         ),
         .executableTarget(
             name: "AuraCLI",
             dependencies: [
                 .target(name: "Aura"),
+                .product(name: "IonText", package: "swift-ion"),
+                .product(name: "SystemIO", package: "swift-io"),
                 .product(name: "System_ArgumentParser", package: "swift-io"),
             ]
         ),

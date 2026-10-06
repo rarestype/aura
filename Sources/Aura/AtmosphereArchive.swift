@@ -1,7 +1,5 @@
 import AuraDecoding
 public import Ion
-import SystemIO
-public import SystemPackage
 
 public struct AtmosphereArchive {
     public static var currentVersion: UInt32 { 1 }
@@ -192,11 +190,5 @@ extension AtmosphereArchive {
             archives.append(archive)
         }
         return archives
-    }
-
-    /// Serializes and writes the archive to the specified file path.
-    public func write(to path: FilePath) throws {
-        let bytes: [UInt8] = try self.serialize()
-        try path.overwrite(with: bytes[...])
     }
 }

@@ -9,7 +9,10 @@ swift build -c release --build-tests -Xswiftc -enable-testing
 # 2. Fast unit tests in release mode (~3s)
 swift test -c release --skip-build
 
-# 3. Full detail 3 computation and golden reference verification
+# 3. CLI integration tests
+Scripts/TestCLI
+
+# 4. Full detail 3 computation and golden reference verification
 threads=$(\
     nproc 2>/dev/null || \
     sysctl -n hw.logicalcpu 2>/dev/null || \

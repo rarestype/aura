@@ -15,7 +15,7 @@ import Testing
             irradiance: Vector2<Int>.init(8, 2)        &<< 1
         )
         let reference: Atmosphere = .earth(resolutions: resolutions)
-        let config: AtmosphereConfig = try .parse(ion: Self.earth)
+        let config: AtmosphereConfig = .earth
         let parameterized: Atmosphere = .from(config: config, resolutions: resolutions)
 
         #expect(reference.radius == parameterized.radius)
@@ -30,7 +30,7 @@ import Testing
     }
 
     @Test static func IonBinaryRoundtrip() throws {
-        let config: AtmosphereConfig = try .parse(ion: Self.earth)
+        let config: AtmosphereConfig = .earth
         let ion: Ion = .encode(atomic: config)
         let decoded: AtmosphereConfig = try ion.decode(atomic: AtmosphereConfig.self)
 
@@ -39,13 +39,6 @@ import Testing
         #expect(decoded.radius_top == config.radius_top)
         #expect(decoded.rayleigh_scattering == config.rayleigh_scattering)
         #expect(decoded.mie_scattering == config.mie_scattering)
-    }
-
-    @Test static func IonTextParsing() throws {
-        let config: AtmosphereConfig = try .parse(ion: Self.earth)
-        #expect(config.name == "Earth")
-        #expect(config.radius_bottom == 6360000.0)
-        #expect(config.mie_g == 0.8)
     }
 
 
@@ -180,7 +173,7 @@ import Testing
     }
 
     @Test static func AtmosphereArchiveSinglePlanetRoundtrip() async throws {
-        let earthConfig: AtmosphereConfig = try .parse(ion: Self.earth)
+        let earthConfig: AtmosphereConfig = .earth
         let archive: AtmosphereArchive = try await .bake(
             config: earthConfig,
             workers: 4,
@@ -229,8 +222,8 @@ import Testing
     }
 
     @Test static func AtmosphereArchiveMultiPlanetBake() async throws {
-        let earthConfig: AtmosphereConfig = try .parse(ion: Self.earth)
-        let marsConfig: AtmosphereConfig = try .parse(ion: Self.mars)
+        let earthConfig: AtmosphereConfig = .earth
+        let marsConfig: AtmosphereConfig = .mars
         let archives: [AtmosphereArchive] = try await AtmosphereArchive.bake(
             configs: [earthConfig, marsConfig],
             workers: 4,
@@ -271,7 +264,7 @@ import Testing
             nz: dummyFace
         )
 
-        let earthConfig: AtmosphereConfig = try .parse(ion: Self.earth)
+        let earthConfig: AtmosphereConfig = .earth
         let earthAtmo: AtmosphereArchive = try await .bake(
             config: earthConfig,
             workers: 4,
@@ -325,58 +318,20 @@ import Testing
         #expect(roundtripMoon.atmosphere == nil)
     }
 
-    @Test static func PackagingManifestParsing() throws {
-        let manifestIon: String = """
-        {
-            version: 1,
-            output: "../../Public/Earth-Moon.aura",
-            planets: [
-                {
-                    name: "Earth",
-                    textures: "../../Public/Earth",
-                    atmosphere: "../../.build/atmospheres/Earth.atmo",
-                    parameters: {
-                        radius: 6371.0e0,
-                        tilt: 0.4084e0,
-                        flattening: 0.00335e0,
-                        relief_scale: 1.0e0
-                    }
-                },
-                {
-                    name: "The Moon",
-                    textures: "../../Public/The Moon",
-                    parameters: {
-                        radius: 1737.4e0,
-                        tilt: 0.0269e0,
-                        flattening: 0.0e0,
-                        relief_scale: 1.5e0
-                    }
-                }
-            ]
+    @Test static func SurfaceParametersMissingRadiusThrows() throws {
+        struct IncompleteParameters: IonEncodableStruct {
+            enum CodingKey: String, IonSymbolizable {
+                case tilt
+                case flattening
+                case relief_scale
+            }
+            func encode(to ion: inout Ion.StructEncoder<CodingKey>) {
+                ion[.tilt] = 0.0
+                ion[.flattening] = 0.0
+                ion[.relief_scale] = 1.0
+            }
         }
-        """
-        let ion: Ion = try .parse(atomic: manifestIon)
-        let manifest: PackagingManifest = try ion.decode(atomic: PackagingManifest.self)
-        #expect(manifest.version == 1)
-        #expect(manifest.output == "../../Public/Earth-Moon.aura")
-        #expect(manifest.planets.count == 2)
-        #expect(manifest.planets[0].name == "Earth")
-        #expect(manifest.planets[0].atmosphere == "../../.build/atmospheres/Earth.atmo")
-        #expect(manifest.planets[0].parameters.radius == 6371.0)
-        #expect(manifest.planets[1].name == "The Moon")
-        #expect(manifest.planets[1].atmosphere == nil)
-        #expect(manifest.planets[1].parameters.radius == 1737.4)
-    }
-
-    @Test static func ManifestMissingRadiusThrows() throws {
-        let badParametersIon: String = """
-        {
-            tilt: 0.0e0,
-            flattening: 0.0e0,
-            relief_scale: 1.0e0
-        }
-        """
-        let ion: Ion = try .parse(atomic: badParametersIon)
+        let ion: Ion = .encode(atomic: IncompleteParameters())
         #expect(throws: (any Error).self) {
             try ion.decode(atomic: PlanetaryArchive.SurfaceParameters.self)
         }
@@ -396,53 +351,49 @@ import Testing
     }
 }
 
-extension AuraTests {
-    static var earth: String {
-        """
-        {
+extension AtmosphereConfig {
+    static var earth: Self {
+        .init(
             name: "Earth",
-            radius_bottom: 6360000.0e0,
-            radius_top: 6420000.0e0,
-            sun_angular_radius: 0.004675e0,
-            max_sun_zenith_angle: 102.0e0,
-            rayleigh_scale_height: 8000.0e0,
+            radius_bottom: 6360000.0,
+            radius_top: 6420000.0,
+            sun_angular_radius: 0.004675,
+            max_sun_zenith_angle: 102.0,
+            rayleigh_scale_height: 8000.0,
             rayleigh_scattering: [
                 5.8023393817123834e-06,
                 1.3557762447920223e-05,
                 3.3100005976367735e-05
             ],
-            mie_scale_height: 1200.0e0,
+            mie_scale_height: 1200.0,
             mie_scattering: [3.996e-06, 3.996e-06, 3.996e-06],
             mie_extinction: [4.44e-06, 4.44e-06, 4.44e-06],
-            mie_albedo: 0.9e0,
-            mie_g: 0.8e0,
+            mie_albedo: 0.9,
+            mie_g: 0.8,
             ozone_extinction: [7.206534e-07, 1.7710017e-06, 6.5216177e-08],
-            ozone_altitude: 25000.0e0,
-            ozone_thickness: 15000.0e0,
-            solar_irradiance: [1.49265e0, 1.850945e0, 1.7622550000000001e0],
-            ground_albedo: [0.1e0, 0.1e0, 0.1e0]
-        }
-        """
+            ozone_altitude: 25000.0,
+            ozone_thickness: 15000.0,
+            solar_irradiance: [1.49265, 1.850945, 1.7622550000000001],
+            ground_albedo: [0.1, 0.1, 0.1]
+        )
     }
 
-    static var mars: String {
-        """
-        {
+    static var mars: Self {
+        .init(
             name: "Mars",
-            radius_bottom: 3389500.0e0,
-            radius_top: 3450000.0e0,
-            sun_angular_radius: 0.003067e0,
-            max_sun_zenith_angle: 100.0e0,
-            rayleigh_scale_height: 11100.0e0,
+            radius_bottom: 3389500.0,
+            radius_top: 3450000.0,
+            sun_angular_radius: 0.003067,
+            max_sun_zenith_angle: 100.0,
+            rayleigh_scale_height: 11100.0,
             rayleigh_scattering: [1.9e-07, 4.5e-07, 1.1e-06],
-            mie_scale_height: 2000.0e0,
+            mie_scale_height: 2000.0,
             mie_scattering: [4.0e-06, 3.2e-06, 2.0e-06],
             mie_extinction: [4.5e-06, 3.8e-06, 2.8e-06],
-            mie_albedo: 0.85e0,
-            mie_g: 0.7e0,
-            solar_irradiance: [0.642e0, 0.796e0, 0.758e0],
-            ground_albedo: [0.25e0, 0.15e0, 0.1e0]
-        }
-        """
+            mie_albedo: 0.85,
+            mie_g: 0.7,
+            solar_irradiance: [0.642, 0.796, 0.758],
+            ground_albedo: [0.25, 0.15, 0.1]
+        )
     }
 }

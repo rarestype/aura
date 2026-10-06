@@ -24,21 +24,18 @@ extension AuraGoldenTests: AsyncParsableCommand {
     }
 
     func run() async throws {
-        print("1. Parsing Earth atmospheric configuration from embedded string...")
-        let config: AtmosphereConfig = try AtmosphereConfig.parse(ion: Self.earthIon)
-
-        print("2. Baking Earth atmosphere archive at detail 3...")
+        print("1. Baking Earth atmosphere archive at detail 3...")
         let clock: ContinuousClock = .init()
         let start: ContinuousClock.Instant = clock.now
         let archive: AtmosphereArchive = try await .bake(
-            config: config,
+            config: Self.earth,
             workers: self.threads,
             detail: 3
         )
         let elapsed: Duration = start.duration(to: clock.now)
         print("   Detail 3 precomputation finished in \(elapsed)!")
 
-        print("3. Verifying physical parameters...")
+        print("2. Verifying physical parameters...")
         let params: AtmosphereParameters = archive.atmosphere.parameters
         guard params.radius_bottom == 6360000.0,
         params.radius_top == 6420000.0,
@@ -48,7 +45,7 @@ extension AuraGoldenTests: AsyncParsableCommand {
         }
         print("   Parameters verified successfully!")
 
-        print("4. Extracting tables and checking CRC32 against golden reference...")
+        print("3. Extracting tables and checking CRC32 against golden reference...")
 
         // Transmittance
         let transDesc: AtmosphereDescriptor.TableDescriptor = archive.atmosphere.tables.transmittance
@@ -116,11 +113,11 @@ extension AuraGoldenTests: AsyncParsableCommand {
             fatalError("Verification failed: Scattering CRC32 mismatch!")
         }
 
-        // 5. Check against external raw golden files if explicitly provided
+        // Optional check against external raw golden files if explicitly provided
         if let goldenDirEnv: String = Environment["GOLDEN_TABLES_DIR"] {
             let goldenDir: FilePath = .init(goldenDirEnv)
             if (try? goldenDir.exists) == true {
-                print("5. Comparing float-by-float against golden files in ‘\(goldenDir)’...")
+                print("   Comparing float-by-float against golden files in ‘\(goldenDir)’...")
                 try Self.verifyAgainstExternalGolden(
                     dir: goldenDir,
                     transmittance: transTable,
@@ -131,13 +128,13 @@ extension AuraGoldenTests: AsyncParsableCommand {
             } else {
                 print(
                     """
-                    5. GOLDEN_TABLES_DIR specified but ‘\(goldenDir)’ does not exist (skipping).
+                       GOLDEN_TABLES_DIR specified but ‘\(goldenDir)’ does not exist (skipping).
                     """
                 )
             }
         }
 
-        print("6. Verifying archive serialization and deserialization roundtrip...")
+        print("4. Verifying archive serialization and deserialization roundtrip...")
         let archiveBytes: [UInt8] = try archive.serialize()
         let deserialized: AtmosphereArchive = try .deserialize(from: archiveBytes)
         let reextractedScattering: [
@@ -250,42 +247,29 @@ extension AuraGoldenTests: AsyncParsableCommand {
 }
 
 extension AuraGoldenTests {
-    static var earthIon: String {
-        """
-        {
-            // Atmosphere configuration for Earth
+    static var earth: AtmosphereConfig {
+        .init(
             name: "Earth",
-
-            // Planetary geometry (meters and radians)
-            radius_bottom: 6360000.0e0,
-            radius_top: 6420000.0e0,
-            sun_angular_radius: 0.004675e0,
-            max_sun_zenith_angle: 102.0e0,
-
-            // Rayleigh molecular scattering
-            rayleigh_scale_height: 8000.0e0,
+            radius_bottom: 6360000.0,
+            radius_top: 6420000.0,
+            sun_angular_radius: 0.004675,
+            max_sun_zenith_angle: 102.0,
+            rayleigh_scale_height: 8000.0,
             rayleigh_scattering: [
                 5.8023393817123834e-06,
                 1.3557762447920223e-05,
                 3.3100005976367735e-05
             ],
-
-            // Mie aerosol scattering
-            mie_scale_height: 1200.0e0,
+            mie_scale_height: 1200.0,
             mie_scattering: [3.996e-06, 3.996e-06, 3.996e-06],
             mie_extinction: [4.44e-06, 4.44e-06, 4.44e-06],
-            mie_albedo: 0.9e0,
-            mie_g: 0.8e0,
-
-            // Absorption / Ozone layer (tent profile centered at 25km)
+            mie_albedo: 0.9,
+            mie_g: 0.8,
             ozone_extinction: [7.206534e-07, 1.7710017e-06, 6.5216177e-08],
-            ozone_altitude: 25000.0e0,
-            ozone_thickness: 15000.0e0,
-
-            // Illumination and surface reflectance
-            solar_irradiance: [1.49265e0, 1.850945e0, 1.7622550000000001e0],
-            ground_albedo: [0.1e0, 0.1e0, 0.1e0]
-        }
-        """
+            ozone_altitude: 25000.0,
+            ozone_thickness: 15000.0,
+            solar_irradiance: [1.49265, 1.850945, 1.7622550000000001],
+            ground_albedo: [0.1, 0.1, 0.1]
+        )
     }
 }

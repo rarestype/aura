@@ -1,3 +1,4 @@
+import Aura
 public import Ion
 
 extension PackagingManifest {

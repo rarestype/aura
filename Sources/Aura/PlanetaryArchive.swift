@@ -1,6 +1,4 @@
 public import Ion
-import SystemIO
-public import SystemPackage
 
 public struct PlanetaryArchive: Sendable {
     public static var currentVersion: UInt32 { 2 }
@@ -59,11 +57,5 @@ extension PlanetaryArchive {
             throw PlanetaryArchiveError.unsupportedVersion(decoded.version)
         }
         return decoded
-    }
-
-    /// Serializes and writes the archive to the specified file path.
-    public func write(to path: FilePath) throws {
-        let bytes: [UInt8] = try self.serialize()
-        try path.overwrite(with: bytes[...])
     }
 }
