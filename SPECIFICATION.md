@@ -77,7 +77,7 @@ To preserve sub-second iteration during art and shader development, the pipeline
 
 ## 4. Intermediate format: `.atmo`
 
-The `.atmo` intermediate file is an **uncompressed binary Amazon Ion structure** (`IonABI`) produced by `aura atmosphere`. It serializes an `AtmosphereArchive` file container holding an `AtmosphereDescriptor` for a single celestial body.
+The `.atmo` intermediate file is an **uncompressed binary Amazon Ion structure** (`IonABI`) produced by `aura atmosphere`. It serializes an `AtmosphereArchive` file container holding an `Atmosphere` for a single celestial body.
 
 ### `.atmo` Ion schema
 
@@ -103,24 +103,22 @@ $ion_1_0
             resolution_irradiance: [64, 16],
             irradiance: [1.474e0, 1.697e0, 1.778e0]
         },
-        tables: {
-            // Individual table buffers are byte-shuffled and Deflate-compressed Float32 blobs
-            transmittance: {
-                width: 256,
-                height: 64,
-                data: {{ ...deflated Float32 blob... }}
-            },
-            scattering: {
-                width: 256,
-                height: 128,
-                depth: 32,
-                data: {{ ...deflated Float32 blob... }}
-            },
-            irradiance: {
-                width: 64,
-                height: 16,
-                data: {{ ...deflated Float32 blob... }}
-            }
+        // Individual table buffers are byte-shuffled and Deflate-compressed Float32 blobs
+        transmittance: {
+            x: 256,
+            y: 64,
+            bytes: {{ ...deflated Float32 blob... }}
+        },
+        scattering: {
+            x: 256,
+            y: 128,
+            z: 32,
+            bytes: {{ ...deflated Float32 blob... }}
+        },
+        irradiance: {
+            x: 64,
+            y: 16,
+            bytes: {{ ...deflated Float32 blob... }}
         }
     }
 }
@@ -144,36 +142,34 @@ The `.aura` file is an **uncompressed binary Amazon Ion container** (`IonABI`) r
 $ion_1_0
 {
     version: 2,
-    planets: [
+    bodies: [
         {
             name: "Earth",
-            parameters: {
+            spheroid: {
                 radius: 6371.0e0,
                 tilt: 0.4084e0,
                 flattening: 0.00335e0,
-                relief_scale: 1.0e0
+                relief: 1.0e0
             },
-            surface: {
-                albedo: {
-                    px: {{ ...binary webp blob... }},
-                    nx: {{ ...binary webp blob... }},
-                    py: {{ ...binary webp blob... }},
-                    ny: {{ ...binary webp blob... }},
-                    pz: {{ ...binary webp blob... }},
-                    nz: {{ ...binary webp blob... }}
-                },
-                // Optional: omitted if planet has no relief normal map
-                relief: {
-                    px: {{ ...binary webp blob... }},
-                    nx: {{ ...binary webp blob... }},
-                    py: {{ ...binary webp blob... }},
-                    ny: {{ ...binary webp blob... }},
-                    pz: {{ ...binary webp blob... }},
-                    nz: {{ ...binary webp blob... }}
-                }
+            albedo: {
+                px: {{ ...binary webp blob... }},
+                nx: {{ ...binary webp blob... }},
+                py: {{ ...binary webp blob... }},
+                ny: {{ ...binary webp blob... }},
+                pz: {{ ...binary webp blob... }},
+                nz: {{ ...binary webp blob... }}
+            },
+            // Optional: omitted if planet has no relief normal map
+            relief: {
+                px: {{ ...binary webp blob... }},
+                nx: {{ ...binary webp blob... }},
+                py: {{ ...binary webp blob... }},
+                ny: {{ ...binary webp blob... }},
+                pz: {{ ...binary webp blob... }},
+                nz: {{ ...binary webp blob... }}
             },
             // Optional: omitted for airless bodies.
-            // Notice: contains an AtmosphereDescriptor (parameters + tables),
+            // Notice: contains an Atmosphere (parameters + tables),
             // omitting redundant container fields (version and name).
             atmosphere: {
                 parameters: {
@@ -192,38 +188,34 @@ $ion_1_0
                     resolution_irradiance: [64, 16],
                     irradiance: [1.474e0, 1.697e0, 1.778e0]
                 },
-                tables: {
-                    transmittance: { width: 256, height: 64, data: {{ ...deflated Float32 blob... }} },
-                    scattering: { width: 256, height: 128, depth: 32, data: {{ ...deflated Float32 blob... }} },
-                    irradiance: { width: 64, height: 16, data: {{ ...deflated Float32 blob... }} }
-                }
+                transmittance: { x: 256, y: 64, bytes: {{ ...deflated Float32 blob... }} },
+                scattering: { x: 256, y: 128, z: 32, bytes: {{ ...deflated Float32 blob... }} },
+                irradiance: { x: 64, y: 16, bytes: {{ ...deflated Float32 blob... }} }
             }
         },
         {
             name: "The Moon",
-            parameters: {
+            spheroid: {
                 radius: 1737.4e0,
                 tilt: 0.0269e0,
                 flattening: 0.0e0,
-                relief_scale: 1.5e0
+                relief: 1.5e0
             },
-            surface: {
-                albedo: {
-                    px: {{ ...binary webp blob... }},
-                    nx: {{ ...binary webp blob... }},
-                    py: {{ ...binary webp blob... }},
-                    ny: {{ ...binary webp blob... }},
-                    pz: {{ ...binary webp blob... }},
-                    nz: {{ ...binary webp blob... }}
-                },
-                relief: {
-                    px: {{ ...binary webp blob... }},
-                    nx: {{ ...binary webp blob... }},
-                    py: {{ ...binary webp blob... }},
-                    ny: {{ ...binary webp blob... }},
-                    pz: {{ ...binary webp blob... }},
-                    nz: {{ ...binary webp blob... }}
-                }
+            albedo: {
+                px: {{ ...binary webp blob... }},
+                nx: {{ ...binary webp blob... }},
+                py: {{ ...binary webp blob... }},
+                ny: {{ ...binary webp blob... }},
+                pz: {{ ...binary webp blob... }},
+                nz: {{ ...binary webp blob... }}
+            },
+            relief: {
+                px: {{ ...binary webp blob... }},
+                nx: {{ ...binary webp blob... }},
+                py: {{ ...binary webp blob... }},
+                ny: {{ ...binary webp blob... }},
+                pz: {{ ...binary webp blob... }},
+                nz: {{ ...binary webp blob... }}
             }
         }
     ]
@@ -232,9 +224,9 @@ $ion_1_0
 
 ### Parameter provenance
 
-Where do `radius`, `tilt`, `flattening`, and `relief_scale` come from during packaging?
-1. **In manifest-driven packaging (`aura pack --manifest <path>`):** Explicitly declared under each planet’s `parameters` section. All four fields (`radius`, `tilt`, `flattening`, and `relief_scale`) are required and fail hard if omitted.
-2. **In single-body packaging (`aura pack <textures>`):** Provided via CLI flags. `--radius` is mandatory. `--tilt`, `--flattening`, and `--relief-scale` default to `0.0`, `0.0`, and `1.0` respectively if omitted. In the live game, the simulation’s `CelestialBodyState` acts as the authoritative ephemeris source for dynamic orbital orientation and position.
+Where do `radius`, `tilt`, `flattening`, and `relief` come from during packaging?
+1. **In manifest-driven packaging (`aura pack --manifest <path>`):** Explicitly declared under each body's `spheroid` section. All four fields (`radius`, `tilt`, `flattening`, and `relief`) are required and fail hard if omitted.
+2. **In single-body packaging (`aura pack <textures>`):** Provided via CLI flags. `--radius` is mandatory. `--tilt`, `--flattening`, and `--relief` default to `0.0`, `0.0`, and `1.0` respectively if omitted. In the live game, the simulation's `CelestialBodyState` acts as the authoritative ephemeris source for dynamic orbital orientation and position.
 
 ---
 
@@ -374,67 +366,64 @@ $ion_1_0
 
 ## 8. Swift library API (`Aura`, `AuraEncoding`, and `AuraDecoding`)
 
-### Domain separation: `AtmosphereDescriptor` vs `AtmosphereArchive`
+### Domain separation: `Atmosphere` vs `AtmosphereArchive`
 
 To prevent schema contradictions and eliminate redundant fields when embedding atmosphere tables:
-* **`AtmosphereDescriptor` (`parameters` + `tables`):**
-  The pure payload holding physical atmosphere parameters and precomputed table descriptors. This is the exact type embedded under `atmosphere` in `AuraArchive.PlanetEntry`.
+* **`Atmosphere` (`parameters` + `transmittance` + `scattering` + `irradiance`):**
+  The pure payload holding physical atmosphere parameters and precomputed table data. This is the exact type embedded under `atmosphere` in `AuraArchive.Body`.
 * **`AtmosphereArchive` (`version` + `name` + `atmosphere`):**
-  The top-level file container for `.atmo` intermediate files. It wraps `AtmosphereDescriptor` alongside the planet’s identity and schema version.
+  The top-level file container for `.atmo` intermediate files. It wraps `Atmosphere` alongside the planet's identity and schema version.
 
 ```swift
-public struct AtmosphereDescriptor: Sendable, Equatable {
+public struct Atmosphere: Sendable {
+    public var transmittance: Atmosphere.Table
+    public var scattering: Atmosphere.Table
+    public var irradiance: Atmosphere.Table
     public var parameters: AtmosphereParameters
-    public var tables: Tables
+}
 
-    public struct Tables: Sendable, Equatable {
-        public var transmittance: TableDescriptor
-        public var scattering: TableDescriptor
-        public var irradiance: TableDescriptor
-    }
-
-    public struct TableDescriptor: Sendable, Equatable {
-        public var width: Int
-        public var height: Int
-        public var depth: Int?
-        public var data: [UInt8]
+extension Atmosphere {
+    public struct Table: Sendable {
+        public let x: Int
+        public let y: Int
+        public let z: Int
+        public let bytes: [UInt8]
+        
+        public var volume: Int { x * y * z }
+        public func decompress() throws -> [SIMD4<Float>]
     }
 }
 
-public struct AtmosphereArchive: Sendable, Equatable {
-    public var version: UInt32
+public struct AtmosphereArchive: Sendable {
     public var name: String
-    public var atmosphere: AtmosphereDescriptor
+    public var atmosphere: Atmosphere
 }
 ```
 
 ### Planetary archive schema
 
 ```swift
-public struct AuraArchive: Sendable, Equatable {
-    public var version: UInt32
-    public var planets: [PlanetEntry]
+public struct AuraArchive: Sendable {
+    public let bodies: [Body]
+}
 
-    public struct PlanetEntry: Sendable, Equatable {
-        public var name: String
-        public var parameters: SurfaceParameters
-        public var surface: SurfaceDescriptor
-        public var atmosphere: AtmosphereDescriptor?
+extension AuraArchive {
+    public struct Body: Sendable {
+        public let name: String
+        public var spheroid: Spheroid
+        public var albedo: Cubemap
+        public var relief: Cubemap?
+        public var atmosphere: Atmosphere?
     }
-
-    public struct SurfaceParameters: Sendable, Equatable {
+    
+    public struct Spheroid: Sendable {
         public var radius: Double
+        public var relief: Double
         public var tilt: Double
         public var flattening: Double
-        public var reliefScale: Double
     }
-
-    public struct SurfaceDescriptor: Sendable, Equatable {
-        public var albedo: CubemapFaces
-        public var relief: CubemapFaces?
-    }
-
-    public struct CubemapFaces: Sendable, Equatable {
+    
+    public struct Cubemap: Sendable {
         public var px: [UInt8]
         public var nx: [UInt8]
         public var py: [UInt8]
@@ -447,8 +436,10 @@ public struct AuraArchive: Sendable, Equatable {
 
 ### Host-side table decompression and extraction
 
-In `AtmosphereDescriptor.Tables`, each table’s `data` contains Deflate-compressed bytes. On the host side:
-1. `TableDescriptor.decode()` directly decompresses the Deflate stream using `LZ77.Inflator` and reverses byte plane shuffling/filtering using `TableDecoder.decode(shuffled:width:height:depth:)` to yield reconstructed `SIMD4<Float>` texels.
+In `Atmosphere`, each table's `bytes` contains Deflate-compressed bytes. On the host side:
+1. `Atmosphere.Table.decompress()` decompresses the Deflate stream using `LZ77.Inflator` and reverses byte plane shuffling/filtering using `TableDecoder.decode(bytes:count:)` to yield reconstructed `SIMD4<Float>` texels.
+2. `TableDecoder.decode(bytes:count:)` in the `AuraDecoding` module performs only the mathematical unfiltering and unshuffling (no inflation).
+3. `TableDecoder.decompress(bytes:count:)` is an extension in the `Aura` module that combines inflation + unfiltering for convenience.
 
 ### One Type Per File convention
 
@@ -457,24 +448,21 @@ In accordance with the project’s [institutional Swift style guide](file:///swi
 ```
 Sources/Aura/
 ├── AtmosphereArchive.swift
-├── AtmosphereArchiveError.swift
-├── AtmosphereDescriptor.swift
-├── AtmosphereDescriptor.Tables.swift
-├── AtmosphereDescriptor.TableDescriptor.swift
-├── AtmosphereDescriptor.TableDescriptor.DecompressionError.swift
+├── Atmosphere.swift
+├── Atmosphere.Table.swift
+├── Atmosphere.TableError.swift
 ├── AtmosphereParameters.swift
 ├── AtmosphereConfiguration.swift
 ├── AuraArchive.swift
-├── AuraArchive.PlanetEntry.swift
-├── AuraArchive.SurfaceParameters.swift
-├── AuraArchive.SurfaceDescriptor.swift
-├── AuraArchive.CubemapFaces.swift
+├── AuraArchive.Body.swift
+├── AuraArchive.Cubemap.swift
+├── AuraArchive.Spheroid.swift
 └── ...
 ```
 
 ### Binary blob encoding
 
-All binary payloads—including cubemap texture faces in `AuraArchive.CubemapFaces` (`px`, `nx`, `py`, `ny`, `pz`, `nz`) and table buffers in `AtmosphereDescriptor.TableDescriptor` (`data`)—must be encoded as binary Amazon Ion blobs (`{{ ... }}`). In Swift, these byte collections must be wrapped and decoded using `Ion.BlobView<[UInt8], Ion.BlobType>` (and `Ion.BlobView<ArraySlice<UInt8>, Ion.BlobType>`) to ensure they serialize as Ion binary blobs rather than integer sequences.
+All binary payloads—including cubemap texture faces in `AuraArchive.Cubemap` (`px`, `nx`, `py`, `ny`, `pz`, `nz`) and table buffers in `Atmosphere.Table` (`data`)—must be encoded as binary Amazon Ion blobs (`{{ ... }}`). In Swift, these byte collections must be wrapped and decoded using `Ion.BlobView<[UInt8], Ion.BlobType>` (and `Ion.BlobView<ArraySlice<UInt8>, Ion.BlobType>`) to ensure they serialize as Ion binary blobs rather than integer sequences.
 
 ### Serialization, deserialization, and test support
 
@@ -523,19 +511,18 @@ export async function loadAuraArchive(url: string): Promise<Map<string, Planetar
     // Directly parse uncompressed Ion binary:
     const root = ion.load(new Uint8Array(arrayBuffer));
     const result = new Map<string, PlanetaryBodyData>();
-    const planetsNode = root.get('planets');
+    const bodiesNode = root.get('bodies');
 
-    if (!planetsNode) {
-        throw new Error(`Invalid archive at ${url}: missing 'planets' list`);
+    if (!bodiesNode) {
+        throw new Error(`Invalid archive at ${url}: missing 'bodies' list`);
     }
 
-    for (const entry of planetsNode.elements()) {
+    for (const entry of bodiesNode.elements()) {
         const name = entry.get('name').stringValue();
-        const surfaceNode = entry.get('surface');
 
         // Extract WebP face blobs directly without Wasm memory copying:
-        const albedoBlobs = extractCubemapBlobs(surfaceNode.get('albedo'));
-        const reliefBlobs = surfaceNode.get('relief') ? extractCubemapBlobs(surfaceNode.get('relief')) : null;
+        const albedoBlobs = extractCubemapBlobs(entry.get('albedo'));
+        const reliefBlobs = entry.get('relief') ? extractCubemapBlobs(entry.get('relief')) : null;
 
         // Decode WebP faces asynchronously on browser background threads:
         const albedoCube = await createCubeTextureFromBlobs(albedoBlobs, SRGBColorSpace);
@@ -549,7 +536,7 @@ export async function loadAuraArchive(url: string): Promise<Map<string, Planetar
         }
 
         result.set(name, {
-            parameters: extractParameters(entry.get('parameters')),
+            parameters: extractParameters(entry.get('spheroid')),
             albedoCube,
             reliefCube,
             atmosphere: atmosphereData,
@@ -560,13 +547,11 @@ export async function loadAuraArchive(url: string): Promise<Map<string, Planetar
 }
 
 async function decodeAtmosphere(name: string, atmoNode: ion.dom.Value): Promise<PlanetaryAtmosphere> {
-    const tablesNode = atmoNode.get('tables');
-
-    async function decompressTable(tableNode: ion.dom.Value): Promise<{ data: Float32Array; width: number; height: number; depth: number }> {
-        const width = tableNode.get('width').numberValue();
-        const height = tableNode.get('height').numberValue();
-        const depth = tableNode.get('depth')?.numberValue() ?? 1;
-        const deflatedBlob = tableNode.get('data').uInt8ArrayValue();
+    async function decompressTable(tableNode: ion.dom.Value): Promise<{ data: Float32Array; x: number; y: number; z: number }> {
+        const x = tableNode.get('x').numberValue();
+        const y = tableNode.get('y').numberValue();
+        const z = tableNode.get('z')?.numberValue() ?? 1;
+        const deflatedBlob = tableNode.get('bytes').uInt8ArrayValue();
 
         // 1. Decompress raw Deflate stream using browser-native DecompressionStream:
         const stream = new Response(deflatedBlob).body!.pipeThrough(
@@ -575,14 +560,14 @@ async function decodeAtmosphere(name: string, atmoNode: ion.dom.Value): Promise<
         const decompressedShuffled = new Uint8Array(await new Response(stream).arrayBuffer());
 
         // 2. Pass uncompressed, shuffled bytes to Wasm for SIMD byte-plane deshuffling:
-        const floatTexels = Swift.decodeAtmosphereTable(decompressedShuffled, width, height, depth);
-        return { data: floatTexels, width, height, depth };
+        const floatTexels = Swift.decodeAtmosphereTable(decompressedShuffled, x, y, z);
+        return { data: floatTexels, x, y, z };
     }
 
     const [trans, scat, irrad] = await Promise.all([
-        decompressTable(tablesNode.get('transmittance')),
-        decompressTable(tablesNode.get('scattering')),
-        decompressTable(tablesNode.get('irradiance')),
+        decompressTable(atmoNode.get('transmittance')),
+        decompressTable(atmoNode.get('scattering')),
+        decompressTable(atmoNode.get('irradiance')),
     ]);
 
     return {
