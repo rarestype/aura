@@ -5,19 +5,19 @@ extension PackagingManifest {
     struct PlanetEntry: Sendable {
         public var name: String
         public var textures: String
+        public var spheroid: AuraArchive.Spheroid
         public var atmosphere: String?
-        public var parameters: PlanetaryArchive.SurfaceParameters
 
         public init(
             name: String,
             textures: String,
-            atmosphere: String? = nil,
-            parameters: PlanetaryArchive.SurfaceParameters
+            spheroid: AuraArchive.Spheroid,
+            atmosphere: String? = nil
         ) {
             self.name = name
             self.textures = textures
+            self.spheroid = spheroid
             self.atmosphere = atmosphere
-            self.parameters = parameters
         }
     }
 }
@@ -26,8 +26,8 @@ extension PackagingManifest.PlanetEntry {
     enum CodingKey: String, IonSymbolizable {
         case name
         case textures
+        case spheroid
         case atmosphere
-        case parameters
     }
 }
 
@@ -35,8 +35,8 @@ extension PackagingManifest.PlanetEntry: IonEncodableStruct {
     func encode(to ion: inout Ion.StructEncoder<CodingKey>) {
         ion[.name] = self.name
         ion[.textures] = self.textures
+        ion[.spheroid] = self.spheroid
         ion[.atmosphere] = self.atmosphere
-        ion[.parameters] = self.parameters
     }
 }
 
@@ -45,8 +45,8 @@ extension PackagingManifest.PlanetEntry: IonDecodableStruct {
         self.init(
             name: try ion[.name].decode(),
             textures: try ion[.textures].decode(),
-            atmosphere: try ion[.atmosphere]?.decode(),
-            parameters: try ion[.parameters].decode()
+            spheroid: try ion[.spheroid].decode(),
+            atmosphere: try ion[.atmosphere]?.decode()
         )
     }
 }

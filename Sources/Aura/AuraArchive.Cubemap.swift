@@ -1,7 +1,7 @@
 public import Ion
 
-extension PlanetaryArchive {
-    public struct CubemapFaces: Sendable {
+extension AuraArchive {
+    public struct Cubemap: Sendable {
         public var px: [UInt8]
         public var nx: [UInt8]
         public var py: [UInt8]
@@ -27,7 +27,7 @@ extension PlanetaryArchive {
     }
 }
 
-extension PlanetaryArchive.CubemapFaces {
+extension AuraArchive.Cubemap {
     @frozen public enum CodingKey: String, IonSymbolizable {
         case px
         case nx
@@ -38,7 +38,7 @@ extension PlanetaryArchive.CubemapFaces {
     }
 }
 
-extension PlanetaryArchive.CubemapFaces: IonEncodableStruct {
+extension AuraArchive.Cubemap: IonEncodableStruct {
     public func encode(to ion: inout Ion.StructEncoder<CodingKey>) {
         ion[.px] = Ion.BlobView<[UInt8], Ion.BlobType>.init(bytes: self.px)
         ion[.nx] = Ion.BlobView<[UInt8], Ion.BlobType>.init(bytes: self.nx)
@@ -49,7 +49,7 @@ extension PlanetaryArchive.CubemapFaces: IonEncodableStruct {
     }
 }
 
-extension PlanetaryArchive.CubemapFaces: IonDecodableStruct {
+extension AuraArchive.Cubemap: IonDecodableStruct {
     public init(ion: borrowing Ion.StructDecoder<CodingKey>) throws {
         let px: Ion.BlobView<ArraySlice<UInt8>, Ion.BlobType> = try ion[.px].decode()
         let nx: Ion.BlobView<ArraySlice<UInt8>, Ion.BlobType> = try ion[.nx].decode()

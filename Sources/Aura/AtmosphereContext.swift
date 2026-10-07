@@ -1,21 +1,4 @@
-extension Atmosphere {
-    static func smoothstep(_ a: Double, _ b: Double, t: Double) -> Double {
-        let x: Double = max(0, min((t - a) / (b - a), 1))
-        return x * x * (3 - 2 * x)
-    }
-
-    // Phase functions
-    static func Rφ(_ ν: Double) -> Double {
-        (3 / (16 * .pi)) * (1 + ν * ν)
-    }
-
-    static func Mφ(_ ν: Double, g: Double) -> Double {
-        let k: Double = 3 / (8 * .pi) * (1 - g * g) / (2 + g * g)
-        return k * (1 + ν * ν) / Double.power(1 + g * g - 2 * g * ν, to: 1.5)
-    }
-}
-
-struct Atmosphere {
+struct AtmosphereContext {
     let radius: (bottom: Double, top: Double, sun: Double) // sun is angular radius of disk
 
     let rayleigh: (density: DensityProfile, scattering: Vector3<Double>)
@@ -40,8 +23,7 @@ struct Atmosphere {
         irradiance: Vector2<Int>
     )
 }
-extension Atmosphere {
-
+extension AtmosphereContext {
     // Cap radius between bottom and top of atmosphere
     private var H: Double {
         .sqrt(self.radius.top * self.radius.top - self.radius.bottom * self.radius.bottom)
@@ -517,7 +499,7 @@ extension Atmosphere {
     }
 }
 
-extension Atmosphere {
+extension AtmosphereContext {
     func tables(
         workers: Int,
         N: Int = 4
@@ -540,7 +522,7 @@ extension Atmosphere {
             self.transmittance(texel: .cast($0) + 0.5)
         }
         let transmittance: TransmittanceTable = .init(
-            atmosphere: self,
+            context: self,
             buffer: texture.transmittance
         )
 
@@ -559,20 +541,20 @@ extension Atmosphere {
             transmittance.singleScattering(texel: .cast($0) + 0.5)
         }
 
-        var Δirradiance: IrradianceTable = .init(atmosphere: self, buffer: texture.irradiance)
-        let Δrayleigh: ScatteringTable   = .init(
-            atmosphere: self,
+        var Δirradiance: IrradianceTable = .init(context: self, buffer: texture.irradiance)
+        let Δrayleigh: ScatteringTable = .init(
+            context: self,
             buffer: texture.scattering.map(\.rayleigh)
         ),
-        Δmie: ScatteringTable        = .init(
-            atmosphere: self,
+        Δmie: ScatteringTable = .init(
+            context: self,
             buffer: texture.scattering.map(\.mie)
         )
 
         // Compute successive scattering orders
         // For `n == 2`, `buffer` is never read anyway
         var Δscattering: ScatteringTable = .init(
-            atmosphere: self,
+            context: self,
             buffer: .init(repeating: .zero, count: self.resolution.scattering.wrappingVolume)
         )
 
@@ -614,7 +596,7 @@ extension Atmosphere {
             }
 
             // Multiple scattering
-            let density: ScatteringTable = .init(atmosphere: self, buffer: texture.density)
+            let density: ScatteringTable = .init(context: self, buffer: texture.density)
             texture.scattering = await ScatteringTable.mapIndices(
                 size: self.resolution.scattering,
                 workers: workers
@@ -626,7 +608,7 @@ extension Atmosphere {
             for i: Int in texture.scattering.indices {
                 let (Δ, ν): (Vector3<Double>, Double) = texture.scattering[i]
                 Δscattering.buffer[i] = Δ
-                scattering[i] += Δ / Self.Rφ(ν)
+                scattering[i] += Δ / Rφ(ν)
             }
             for i: Int in texture.irradiance.indices {
                 let Δ: Vector3<Double> = texture.irradiance[i]
@@ -638,14 +620,14 @@ extension Atmosphere {
         return (
             transmittance: transmittance,
             mie: Δmie,
-            scattering: .init(atmosphere: self, buffer: scattering),
-            irradiance: .init(atmosphere: self, buffer: irradiance)
+            scattering: .init(context: self, buffer: scattering),
+            irradiance: .init(context: self, buffer: irradiance)
         )
     }
 }
 
 // Debug descriptions
-extension Atmosphere: CustomStringConvertible {
+extension AtmosphereContext: CustomStringConvertible {
     var description: String {
         """
         Atmosphere [\(self.resolution.transmittance), \(self.resolution.scattering4), \(
@@ -672,15 +654,15 @@ extension Atmosphere: CustomStringConvertible {
     }
 }
 
-extension Atmosphere {
-    static func from(
-        config: AtmosphereConfig,
+extension AtmosphereContext {
+    static func load(
+        from config: AtmosphereConfig,
         resolutions resolution: (
             transmittance: Vector2<Int>,
             scattering: Vector4<Int>,
             irradiance: Vector2<Int>
         )
-    ) -> Atmosphere {
+    ) -> Self {
         Swift.assert(resolution.transmittance / 2 &* 2 == resolution.transmittance)
         Swift.assert(resolution.scattering    / 2 &* 2 == resolution.scattering)
         Swift.assert(resolution.irradiance    / 2 &* 2 == resolution.irradiance)

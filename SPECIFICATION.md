@@ -10,17 +10,17 @@ An `.aura` file is an uncompressed Amazon Ion binary archive (`IonABI`) that pro
 
 ### Primary goals
 
-1. **Atomic single-request loading:**  
+1. **Atomic single-request loading:**
    Collapses up to 13 separate HTTP requests per body (6 albedo faces + 6 relief normal faces + 1 atmosphere table file) into a **single network fetch**.
-2. **Multi-body bundling:**  
+2. **Multi-body bundling:**
    Supports packing multiple coupled celestial bodies into a single archive (for example, packaging Earth and the Moon together, or Jupiter and its Galilean satellites). When the client navigates to a planetary system, visual assets for both the primary body and its major satellites are retrieved in a single request.
-3. **Format standardization:**  
+3. **Format standardization:**
    Standardizes exclusively on **WebP** for all surface texture faces (`px.webp`, `nx.webp`, `py.webp`, `ny.webp`, `pz.webp`, `nz.webp`).
-4. **Targeted compression without whole-archive Gzip:**  
+4. **Targeted compression without whole-archive Gzip:**
    WebP images are already entropy-compressed; running Gzip over them yields essentially 0% compression while wasting CPU cycles on both build machines and client devices. Instead, the `.aura` archive itself is an **uncompressed binary Ion structure**. Compression is applied **only to the atmosphere tables** (which contain raw `Float32` arrays that compress by 80–90%).
-5. **Direct JavaScript / WebGL decoding without WebAssembly bottleneck:**  
+5. **Direct JavaScript / WebGL decoding without WebAssembly bottleneck:**
    JavaScript/TypeScript directly parses the Ion archive using `ion-js` and feeds the WebP byte blobs straight into browser-native, off-thread `createImageBitmap(blob)`. Texture bytes never touch WebAssembly memory. WebAssembly is only invoked for specialized mathematical reconstruction (such as atmospheric table deshuffling).
-6. **Decoupled build pipeline:**  
+6. **Decoupled build pipeline:**
    Separates heavy numerical physics computations (atmospheric scattering simulation) from asset packaging (texture bundling) via a **build intermediate (`.atmo`)**, enabling visual texture iteration times under 50 milliseconds.
 
 ---
@@ -136,7 +136,7 @@ The resolution fields (`resolution_transmittance`, `resolution_scattering4_R`, e
 
 ## 5. Unified archive format: `.aura`
 
-The `.aura` file is an **uncompressed binary Amazon Ion container** (`IonABI`) representing a `PlanetaryArchive`.
+The `.aura` file is an **uncompressed binary Amazon Ion container** (`IonABI`) representing a `AuraArchive`.
 
 ### `.aura` Ion schema
 
@@ -351,23 +351,23 @@ $ion_1_0
 
 `aura pack` enforces strict validation to ensure archives are never written in corrupted or incomplete states:
 
-1. **Missing albedo face files:**  
+1. **Missing albedo face files:**
    If any of `px.webp`, `nx.webp`, `py.webp`, `ny.webp`, `pz.webp`, `nz.webp` are missing from the `<textures>` directory, `aura pack` fails immediately with exit code 1:
    ```
    Error: Missing required albedo faces in 'Public/Earth': [py.webp, ny.webp]
    ```
-2. **Partial `Relief/` directory:**  
+2. **Partial `Relief/` directory:**
    If a `Relief/` subdirectory exists, it must contain **all 6** faces. If fewer than 6 faces are found, `aura pack` fails immediately with exit code 1:
    ```
    Error: Incomplete relief normal map in 'Public/The Moon/Relief': missing [pz.webp]
    ```
    If the `Relief/` directory is entirely absent, relief mapping is cleanly omitted.
-3. **Missing or corrupt `.atmo` file:**  
+3. **Missing or corrupt `.atmo` file:**
    If an atmosphere path is provided but the file does not exist or fails Ion decoding, `aura pack` fails immediately with exit code 1:
    ```
    Error: Atmosphere intermediate not found at '.build/atmospheres/Earth.atmo'
    ```
-4. **Manifest validation errors:**  
+4. **Manifest validation errors:**
    If a manifest specifies non-existent texture directories or invalid parameter types, `aura pack` aborts before writing output.
 
 ---
@@ -377,9 +377,9 @@ $ion_1_0
 ### Domain separation: `AtmosphereDescriptor` vs `AtmosphereArchive`
 
 To prevent schema contradictions and eliminate redundant fields when embedding atmosphere tables:
-* **`AtmosphereDescriptor` (`parameters` + `tables`):**  
-  The pure payload holding physical atmosphere parameters and precomputed table descriptors. This is the exact type embedded under `atmosphere` in `PlanetaryArchive.PlanetEntry`.
-* **`AtmosphereArchive` (`version` + `name` + `atmosphere`):**  
+* **`AtmosphereDescriptor` (`parameters` + `tables`):**
+  The pure payload holding physical atmosphere parameters and precomputed table descriptors. This is the exact type embedded under `atmosphere` in `AuraArchive.PlanetEntry`.
+* **`AtmosphereArchive` (`version` + `name` + `atmosphere`):**
   The top-level file container for `.atmo` intermediate files. It wraps `AtmosphereDescriptor` alongside the planet’s identity and schema version.
 
 ```swift
@@ -411,7 +411,7 @@ public struct AtmosphereArchive: Sendable, Equatable {
 ### Planetary archive schema
 
 ```swift
-public struct PlanetaryArchive: Sendable, Equatable {
+public struct AuraArchive: Sendable, Equatable {
     public var version: UInt32
     public var planets: [PlanetEntry]
 
@@ -464,26 +464,26 @@ Sources/Aura/
 ├── AtmosphereDescriptor.TableDescriptor.DecompressionError.swift
 ├── AtmosphereParameters.swift
 ├── AtmosphereConfig.swift
-├── PlanetaryArchive.swift
-├── PlanetaryArchive.PlanetEntry.swift
-├── PlanetaryArchive.SurfaceParameters.swift
-├── PlanetaryArchive.SurfaceDescriptor.swift
-├── PlanetaryArchive.CubemapFaces.swift
+├── AuraArchive.swift
+├── AuraArchive.PlanetEntry.swift
+├── AuraArchive.SurfaceParameters.swift
+├── AuraArchive.SurfaceDescriptor.swift
+├── AuraArchive.CubemapFaces.swift
 └── ...
 ```
 
 ### Binary blob encoding
 
-All binary payloads—including cubemap texture faces in `PlanetaryArchive.CubemapFaces` (`px`, `nx`, `py`, `ny`, `pz`, `nz`) and table buffers in `AtmosphereDescriptor.TableDescriptor` (`data`)—must be encoded as binary Amazon Ion blobs (`{{ ... }}`). In Swift, these byte collections must be wrapped and decoded using `Ion.BlobView<[UInt8], Ion.BlobType>` (and `Ion.BlobView<ArraySlice<UInt8>, Ion.BlobType>`) to ensure they serialize as Ion binary blobs rather than integer sequences.
+All binary payloads—including cubemap texture faces in `AuraArchive.CubemapFaces` (`px`, `nx`, `py`, `ny`, `pz`, `nz`) and table buffers in `AtmosphereDescriptor.TableDescriptor` (`data`)—must be encoded as binary Amazon Ion blobs (`{{ ... }}`). In Swift, these byte collections must be wrapped and decoded using `Ion.BlobView<[UInt8], Ion.BlobType>` (and `Ion.BlobView<ArraySlice<UInt8>, Ion.BlobType>`) to ensure they serialize as Ion binary blobs rather than integer sequences.
 
 ### Serialization, deserialization, and test support
 
 All structures conform to **both `IonEncodableStruct` and `IonDecodableStruct`**:
 
 ```swift
-extension PlanetaryArchive {
+extension AuraArchive {
     public func serialize() throws -> [UInt8]
-    public static func deserialize(from bytes: [UInt8]) throws -> PlanetaryArchive
+    public static func deserialize(from bytes: [UInt8]) throws -> AuraArchive
 }
 
 extension AtmosphereArchive {
@@ -493,7 +493,7 @@ extension AtmosphereArchive {
 ```
 
 * **Unit and golden testing:** Round-trip deserialization (`serialize()` followed by `deserialize(from:)`) is fully supported and tested in `AuraTests` and `AuraGoldenTests` to guarantee binary compatibility and serialization fidelity.
-* **Execution boundary:** `PlanetaryArchive.deserialize(from:)` is a host-side Swift utility. It is **not** called by the in-game WebAssembly engine, ensuring that large WebP byte arrays are never duplicated in the Wasm linear heap.
+* **Execution boundary:** `AuraArchive.deserialize(from:)` is a host-side Swift utility. It is **not** called by the in-game WebAssembly engine, ensuring that large WebP byte arrays are never duplicated in the Wasm linear heap.
 
 ---
 
@@ -516,7 +516,7 @@ extension AtmosphereArchive {
 ### JavaScript decoding code
 
 ```typescript
-export async function loadPlanetaryArchive(url: string): Promise<Map<string, PlanetaryBodyData>> {
+export async function loadAuraArchive(url: string): Promise<Map<string, PlanetaryBodyData>> {
     const response = await fetch(url);
     const arrayBuffer = await response.arrayBuffer();
 
@@ -532,7 +532,7 @@ export async function loadPlanetaryArchive(url: string): Promise<Map<string, Pla
     for (const entry of planetsNode.elements()) {
         const name = entry.get('name').stringValue();
         const surfaceNode = entry.get('surface');
-        
+
         // Extract WebP face blobs directly without Wasm memory copying:
         const albedoBlobs = extractCubemapBlobs(surfaceNode.get('albedo'));
         const reliefBlobs = surfaceNode.get('relief') ? extractCubemapBlobs(surfaceNode.get('relief')) : null;
@@ -616,11 +616,11 @@ async function createCubeTextureFromBlobs(
 
 ### Key performance benefits
 
-1. **No whole-archive Gzip penalty:**  
+1. **No whole-archive Gzip penalty:**
    Zero decompression CPU overhead on multi-megabyte texture files.
-2. **Zero Wasm memory amplification:**  
+2. **Zero Wasm memory amplification:**
    Large WebP textures are decoded by the browser’s C++ image pipeline directly into GPU memory, avoiding copying images into or out of the WebAssembly heap.
-3. **True parallel decoding:**  
+3. **True parallel decoding:**
    All 6 faces of the cubemap are decoded concurrently using native browser worker threads via `createImageBitmap`.
-4. **Lightweight WebAssembly footprint:**  
+4. **Lightweight WebAssembly footprint:**
    `AuraDecoding` in Wasm does not link or embed zlib/deflate code; decompression runs via browser-native streams in JavaScript.

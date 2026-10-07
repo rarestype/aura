@@ -72,8 +72,8 @@ extension AtmosphereArchive {
             throw AtmosphereError.invalidDetail(detail)
         }
 
-        let atmosphere: Atmosphere = .from(
-            config: config,
+        let atmosphere: AtmosphereContext = .load(
+            from: config,
             resolutions: (
                 transmittance: .init(32, 8) &<< detail,
                 scattering: .init(4, 16, 4, 1) &<< detail,

@@ -1,4 +1,4 @@
-extension Atmosphere.DensityProfile {
+extension AtmosphereContext.DensityProfile {
     struct Layer {
         let thickness: Double
         let coefficient: (exponential: Double, linear: Double, constant: Double)
@@ -15,7 +15,7 @@ extension Atmosphere.DensityProfile {
         }
     }
 }
-extension Atmosphere.DensityProfile.Layer {
+extension AtmosphereContext.DensityProfile.Layer {
     subscript(altitude altitude: Double) -> Double {
         let terms: (Double, Double, Double) = (
             self.coefficient.exponential * Double.exp(self.scale * altitude),

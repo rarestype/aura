@@ -80,10 +80,10 @@ extension AuraCLI {
             let texturesDir: FilePath = .init(texturesPathString)
             let planetName: String = self.name ?? texturesDir.lastComponent?.string ?? "Planet"
 
-            let albedo: PlanetaryArchive.CubemapFaces = try Self.loadAlbedo(
+            let albedo: AuraArchive.Cubemap = try Self.loadAlbedo(
                 texturesDir: texturesDir
             )
-            let relief: PlanetaryArchive.CubemapFaces? = try Self.loadRelief(
+            let relief: AuraArchive.Cubemap? = try Self.loadRelief(
                 texturesDir: texturesDir
             )
 
@@ -106,17 +106,18 @@ extension AuraCLI {
                 throw ValidationError("Planetary radius in kilometers must be specified via --radius")
             }
 
-            let params: PlanetaryArchive.SurfaceParameters = .init(
+            let spheroid: AuraArchive.Spheroid = .init(
                 radius: radius,
                 tilt: self.tilt ?? 0.0,
                 flattening: self.flattening ?? 0.0,
                 reliefScale: self.reliefScale ?? 1.0
             )
 
-            let entry: PlanetaryArchive.PlanetEntry = .init(
+            let entry: AuraArchive.Body = .init(
                 name: planetName,
-                parameters: params,
-                surface: .init(albedo: albedo, relief: relief),
+                spheroid: spheroid,
+                albedo: albedo,
+                relief: relief,
                 atmosphere: atmosphereDescriptor
             )
 
@@ -133,7 +134,7 @@ extension AuraCLI {
                 try FilePath.Directory.init(path: parent).create()
             }
 
-            let archive: PlanetaryArchive = .init(planets: [entry])
+            let archive: AuraArchive = .init(bodies: [entry])
             try archive.write(to: outPath)
             print("Successfully packed '\(planetName)' into '\(outPath)'!")
         }
@@ -150,7 +151,7 @@ extension AuraCLI {
                 manifestDir = "."
             }
 
-            var entries: [PlanetaryArchive.PlanetEntry] = []
+            var entries: [AuraArchive.Body] = []
             entries.reserveCapacity(manifest.planets.count)
 
             for planet: PackagingManifest.PlanetEntry in manifest.planets {
@@ -158,10 +159,10 @@ extension AuraCLI {
                     pathString: planet.textures,
                     relativeTo: manifestDir
                 )
-                let albedo: PlanetaryArchive.CubemapFaces = try Self.loadAlbedo(
+                let albedo: AuraArchive.Cubemap = try Self.loadAlbedo(
                     texturesDir: texturesPath
                 )
-                let relief: PlanetaryArchive.CubemapFaces? = try Self.loadRelief(
+                let relief: AuraArchive.Cubemap? = try Self.loadRelief(
                     texturesDir: texturesPath
                 )
 
@@ -183,10 +184,11 @@ extension AuraCLI {
                     }
                 }
 
-                let entry: PlanetaryArchive.PlanetEntry = .init(
+                let entry: AuraArchive.Body = .init(
                     name: planet.name,
-                    parameters: planet.parameters,
-                    surface: .init(albedo: albedo, relief: relief),
+                    spheroid: planet.spheroid,
+                    albedo: albedo,
+                    relief: relief,
                     atmosphere: atmosphereDescriptor
                 )
                 entries.append(entry)
@@ -201,14 +203,14 @@ extension AuraCLI {
                 try FilePath.Directory.init(path: parent).create()
             }
 
-            let archive: PlanetaryArchive = .init(planets: entries)
+            let archive: AuraArchive = .init(bodies: entries)
             try archive.write(to: outPath)
             print("Successfully packed \(entries.count) bodies into '\(outPath)'!")
         }
 
         private static func loadAlbedo(
             texturesDir: FilePath
-        ) throws -> PlanetaryArchive.CubemapFaces {
+        ) throws -> AuraArchive.Cubemap {
             let faceNames: [String] = [
                 "px.webp",
                 "nx.webp",
@@ -247,7 +249,7 @@ extension AuraCLI {
 
         private static func loadRelief(
             texturesDir: FilePath
-        ) throws -> PlanetaryArchive.CubemapFaces? {
+        ) throws -> AuraArchive.Cubemap? {
             let reliefDir: FilePath = texturesDir.appending("Relief")
             guard (try? reliefDir.exists) == true else {
                 return nil

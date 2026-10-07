@@ -177,7 +177,7 @@ import Testing
         #expect(archives[1].atmosphere.parameters.radius_bottom == 3389500.0)
     }
 
-    @Test static func PlanetaryArchiveRoundtrip() async throws {
+    @Test static func AuraArchiveRoundtrip() async throws {
         let dummyFace: [UInt8] = [
             0x52,
             0x49,
@@ -188,7 +188,7 @@ import Testing
             0x00,
             0x00
         ] // synthetic webp header
-        let dummyAlbedo: PlanetaryArchive.CubemapFaces = .init(
+        let dummyAlbedo: AuraArchive.Cubemap = .init(
             px: dummyFace,
             nx: dummyFace,
             py: dummyFace,
@@ -196,7 +196,7 @@ import Testing
             pz: dummyFace,
             nz: dummyFace
         )
-        let dummyRelief: PlanetaryArchive.CubemapFaces = .init(
+        let dummyRelief: AuraArchive.Cubemap = .init(
             px: dummyFace,
             nx: dummyFace,
             py: dummyFace,
@@ -212,50 +212,51 @@ import Testing
             detail: 1
         )
 
-        let earthEntry: PlanetaryArchive.PlanetEntry = .init(
+        let earthEntry: AuraArchive.Body = .init(
             name: "Earth",
-            parameters: .init(
+            spheroid: .init(
                 radius: 6371.0,
                 tilt: 0.4084,
                 flattening: 0.00335,
                 reliefScale: 1.0
             ),
-            surface: .init(albedo: dummyAlbedo, relief: dummyRelief),
+            albedo: dummyAlbedo,
+            relief: dummyRelief,
             atmosphere: earthAtmo.atmosphere
         )
 
-        let moonEntry: PlanetaryArchive.PlanetEntry = .init(
+        let moonEntry: AuraArchive.Body = .init(
             name: "The Moon",
-            parameters: .init(
+            spheroid: .init(
                 radius: 1737.4,
                 tilt: 0.0269,
                 flattening: 0.0,
                 reliefScale: 1.5
             ),
-            surface: .init(albedo: dummyAlbedo, relief: nil),
+            albedo: dummyAlbedo,
+            relief: nil,
             atmosphere: nil
         )
 
-        let archive: PlanetaryArchive = .init(planets: [earthEntry, moonEntry])
+        let archive: AuraArchive = .init(bodies: [earthEntry, moonEntry])
         let bytes: [UInt8] = try archive.serialize()
         #expect(!bytes.isEmpty)
 
-        let deserialized: PlanetaryArchive = try .deserialize(from: bytes)
-        #expect(deserialized.version == PlanetaryArchive.currentVersion)
-        #expect(deserialized.planets.count == 2)
+        let deserialized: AuraArchive = try .deserialize(from: bytes)
+        #expect(deserialized.bodies.count == 2)
 
-        let roundtripEarth: PlanetaryArchive.PlanetEntry = try #require(deserialized["Earth"])
-        #expect(roundtripEarth.parameters.radius == 6371.0)
-        #expect(roundtripEarth.parameters.tilt == 0.4084)
-        #expect(roundtripEarth.surface.albedo.px == dummyFace)
-        #expect(roundtripEarth.surface.relief?.pz == dummyFace)
+        let roundtripEarth: AuraArchive.Body = try #require(deserialized["Earth"])
+        #expect(roundtripEarth.spheroid.radius == 6371.0)
+        #expect(roundtripEarth.spheroid.tilt == 0.4084)
+        #expect(roundtripEarth.albedo.px == dummyFace)
+        #expect(roundtripEarth.relief?.pz == dummyFace)
         #expect(roundtripEarth.atmosphere != nil)
         #expect(roundtripEarth.atmosphere?.parameters.radius_bottom == 6360000.0)
 
-        let roundtripMoon: PlanetaryArchive.PlanetEntry = try #require(deserialized["The Moon"])
-        #expect(roundtripMoon.parameters.radius == 1737.4)
-        #expect(roundtripMoon.parameters.reliefScale == 1.5)
-        #expect(roundtripMoon.surface.relief == nil)
+        let roundtripMoon: AuraArchive.Body = try #require(deserialized["The Moon"])
+        #expect(roundtripMoon.spheroid.radius == 1737.4)
+        #expect(roundtripMoon.spheroid.reliefScale == 1.5)
+        #expect(roundtripMoon.relief == nil)
         #expect(roundtripMoon.atmosphere == nil)
     }
 
@@ -274,7 +275,7 @@ import Testing
         }
         let ion: Ion = .encode(atomic: IncompleteParameters())
         #expect(throws: (any Error).self) {
-            try ion.decode(atomic: PlanetaryArchive.SurfaceParameters.self)
+            try ion.decode(atomic: AuraArchive.Spheroid.self)
         }
     }
 
@@ -336,5 +337,10 @@ extension AtmosphereConfig {
             solar_irradiance: [0.642, 0.796, 0.758],
             ground_albedo: [0.25, 0.15, 0.1]
         )
+    }
+}
+extension AuraArchive {
+    subscript(name: String) -> Body? {
+        self.bodies.first { $0.name == name }
     }
 }

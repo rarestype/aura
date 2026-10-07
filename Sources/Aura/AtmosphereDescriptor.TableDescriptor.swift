@@ -24,6 +24,9 @@ extension AtmosphereDescriptor {
 }
 
 extension AtmosphereDescriptor.TableDescriptor {
+    @inlinable public var volume: Int { self.x * self.y * self.z }
+}
+extension AtmosphereDescriptor.TableDescriptor {
     @frozen public enum CodingKey: String, IonSymbolizable {
         case x
         case y
@@ -64,9 +67,9 @@ extension AtmosphereDescriptor.TableDescriptor {
             count: (self.x, self.y, self.z)
         )
 
-        guard pixels.count == self.x * self.y * self.z else {
+        guard self.volume == pixels.count else {
             throw DecompressionError.decompressedSizeMismatch(
-                expected: self.x * self.y * self.z,
+                expected: self.volume,
                 actual: pixels.count
             )
         }

@@ -85,23 +85,23 @@ cat << EOF > "$TMP_DIR/manifest.ion"
         {
             name: "Earth",
             textures: "Public/Earth",
-            atmosphere: "Earth.atmo",
-            parameters: {
+            spheroid: {
                 radius: 6371.0e0,
                 tilt: 0.4084e0,
                 flattening: 0.00335e0,
                 relief_scale: 1.0e0
-            }
+            },
+            atmosphere: "Earth.atmo",
         },
         {
             name: "The Moon",
             textures: "Public/Moon",
-            parameters: {
+            spheroid: {
                 radius: 1737.4e0,
                 tilt: 0.0269e0,
                 flattening: 0.0e0,
                 relief_scale: 1.5e0
-            }
+            },
         }
     ]
 }

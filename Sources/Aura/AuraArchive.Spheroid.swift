@@ -1,7 +1,7 @@
 public import Ion
 
-extension PlanetaryArchive {
-    public struct SurfaceParameters: Sendable {
+extension AuraArchive {
+    public struct Spheroid: Sendable {
         public var radius: Double
         public var tilt: Double
         public var flattening: Double
@@ -21,7 +21,7 @@ extension PlanetaryArchive {
     }
 }
 
-extension PlanetaryArchive.SurfaceParameters {
+extension AuraArchive.Spheroid {
     @frozen public enum CodingKey: String, IonSymbolizable {
         case radius
         case tilt
@@ -30,7 +30,7 @@ extension PlanetaryArchive.SurfaceParameters {
     }
 }
 
-extension PlanetaryArchive.SurfaceParameters: IonEncodableStruct {
+extension AuraArchive.Spheroid: IonEncodableStruct {
     public func encode(to ion: inout Ion.StructEncoder<CodingKey>) {
         ion[.radius] = self.radius
         ion[.tilt] = self.tilt
@@ -39,7 +39,7 @@ extension PlanetaryArchive.SurfaceParameters: IonEncodableStruct {
     }
 }
 
-extension PlanetaryArchive.SurfaceParameters: IonDecodableStruct {
+extension AuraArchive.Spheroid: IonDecodableStruct {
     public init(ion: borrowing Ion.StructDecoder<CodingKey>) throws {
         self.init(
             radius: try ion[.radius].decode(),

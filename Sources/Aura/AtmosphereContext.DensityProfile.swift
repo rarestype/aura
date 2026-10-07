@@ -1,4 +1,4 @@
-extension Atmosphere {
+extension AtmosphereContext {
     struct DensityProfile {
         private let layers: (Layer, Layer)
 
@@ -12,7 +12,7 @@ extension Atmosphere {
         }
     }
 }
-extension Atmosphere.DensityProfile {
+extension AtmosphereContext.DensityProfile {
     subscript(altitude altitude: Double) -> Double {
         let layer: Layer = altitude < self.layers.0.thickness
             ? self.layers.0

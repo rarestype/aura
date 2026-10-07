@@ -2,7 +2,6 @@ protocol AtmosphereTable<Dimensions> {
     associatedtype Dimensions
     associatedtype Element
 
-    var atmosphere: Atmosphere { get }
     var buffer: [Element] { get set }
     var size: Dimensions { get }
 }
