@@ -2,45 +2,37 @@ import Aura
 import Ion
 
 struct PackagingManifest: Sendable {
-    public static var currentVersion: UInt32 { 1 }
-
-    public var version: UInt32
-    public var output: String
-    public var planets: [PlanetEntry]
+    let output: String
+    let bodies: [Body]
 
     public init(
-        version: UInt32 = Self.currentVersion,
         output: String,
-        planets: [PlanetEntry]
+        bodies: [Body]
     ) {
-        self.version = version
         self.output = output
-        self.planets = planets
+        self.bodies = bodies
     }
 }
 
 extension PackagingManifest {
     enum CodingKey: String, IonSymbolizable {
-        case version
         case output
-        case planets
+        case bodies
     }
 }
 
 extension PackagingManifest: IonEncodableStruct {
     func encode(to ion: inout Ion.StructEncoder<CodingKey>) {
-        ion[.version] = self.version
         ion[.output] = self.output
-        ion[.planets] = self.planets
+        ion[.bodies] = self.bodies
     }
 }
 
 extension PackagingManifest: IonDecodableStruct {
     init(ion: borrowing Ion.StructDecoder<CodingKey>) throws {
         self.init(
-            version: try ion[.version].decode(),
             output: try ion[.output].decode(),
-            planets: try ion[.planets].decode()
+            bodies: try ion[.bodies].decode()
         )
     }
 }

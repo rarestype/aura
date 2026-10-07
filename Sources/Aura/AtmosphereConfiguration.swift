@@ -1,6 +1,6 @@
 public import Ion
 
-public struct AtmosphereConfig: Sendable {
+public struct AtmosphereConfiguration: Sendable {
     public var name: String
 
     // Planetary geometry (meters and degrees)
@@ -68,7 +68,7 @@ public struct AtmosphereConfig: Sendable {
     }
 }
 
-extension AtmosphereConfig {
+extension AtmosphereConfiguration {
     @frozen public enum CodingKey: String, IonSymbolizable {
         case name
         case radius_bottom
@@ -90,7 +90,7 @@ extension AtmosphereConfig {
     }
 }
 
-extension AtmosphereConfig: IonEncodableStruct {
+extension AtmosphereConfiguration: IonEncodableStruct {
     public func encode(to ion: inout Ion.StructEncoder<CodingKey>) {
         ion[.name] = self.name
         ion[.radius_bottom] = self.radius_bottom
@@ -112,7 +112,7 @@ extension AtmosphereConfig: IonEncodableStruct {
     }
 }
 
-extension AtmosphereConfig: IonDecodableStruct {
+extension AtmosphereConfiguration: IonDecodableStruct {
     public init(ion: borrowing Ion.StructDecoder<CodingKey>) throws {
         self.init(
             name: try ion[.name].decode(),

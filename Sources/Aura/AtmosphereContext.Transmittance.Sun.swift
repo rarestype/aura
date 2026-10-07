@@ -1,9 +1,9 @@
-extension TransmittanceTable {
+extension AtmosphereContext.Transmittance {
     struct Sun {
-        let table: TransmittanceTable
+        let table: AtmosphereContext.Transmittance
     }
 }
-extension TransmittanceTable.Sun {
+extension AtmosphereContext.Transmittance.Sun {
     subscript(r r: Double, μs μs: Double) -> Vector3<Double> {
         let α: Double = self.table.context.radius.sun
         let sin: Double = self.table.context.radius.bottom / r

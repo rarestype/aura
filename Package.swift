@@ -34,6 +34,12 @@ let package: Package = .init(
                 .product(name: "LZ77", package: "swift-png"),
             ]
         ),
+        .target(
+            name: "AuraTesting",
+            dependencies: [
+                .target(name: "Aura"),
+            ]
+        ),
         .executableTarget(
             name: "AuraCLI",
             dependencies: [
@@ -47,6 +53,7 @@ let package: Package = .init(
             name: "AuraGoldenTests",
             dependencies: [
                 .target(name: "Aura"),
+                .target(name: "AuraTesting"),
                 .product(name: "CRC", package: "h"),
                 .product(name: "SystemIO", package: "swift-io"),
                 .product(name: "System_ArgumentParser", package: "swift-io"),
@@ -56,8 +63,7 @@ let package: Package = .init(
             name: "AuraTests",
             dependencies: [
                 .target(name: "Aura"),
-                .target(name: "AuraDecoding"),
-                .target(name: "AuraEncoding"),
+                .target(name: "AuraTesting"),
             ]
         ),
     ]

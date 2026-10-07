@@ -49,8 +49,8 @@ cat << 'EOF' > "$TMP_DIR/Atmospheres/Earth.ion"
 EOF
 
 # 3. Test 'aura atmosphere' command
-echo "--> Testing 'aura atmosphere'..."
-"$AURA_BIN" atmosphere "$TMP_DIR/Atmospheres/Earth.ion" --detail 1 --output "$TMP_DIR/Earth.atmo"
+echo "--> Testing 'aura bake'..."
+"$AURA_BIN" bake "$TMP_DIR/Atmospheres/Earth.ion" --detail 1 --output "$TMP_DIR/Earth.atmo"
 
 if [ ! -s "$TMP_DIR/Earth.atmo" ]; then
     echo "Error: Atmosphere intermediate not generated or empty." >&2
@@ -79,17 +79,16 @@ echo "    Generated Earth.aura successfully."
 echo "--> Testing 'aura pack' (manifest mode)..."
 cat << EOF > "$TMP_DIR/manifest.ion"
 {
-    version: 1,
     output: "Earth-Moon.aura",
-    planets: [
+    bodies: [
         {
             name: "Earth",
             textures: "Public/Earth",
             spheroid: {
                 radius: 6371.0e0,
+                relief: 1.0e0,
                 tilt: 0.4084e0,
                 flattening: 0.00335e0,
-                relief_scale: 1.0e0
             },
             atmosphere: "Earth.atmo",
         },
@@ -98,9 +97,9 @@ cat << EOF > "$TMP_DIR/manifest.ion"
             textures: "Public/Moon",
             spheroid: {
                 radius: 1737.4e0,
+                relief: 1.5e0,
                 tilt: 0.0269e0,
                 flattening: 0.0e0,
-                relief_scale: 1.5e0
             },
         }
     ]

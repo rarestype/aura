@@ -1,14 +1,15 @@
 import Aura
 import AuraDecoding
 import AuraEncoding
+import AuraTesting
 import Ion
 import Testing
 
 @Suite struct AuraTests {
     @Test static func IonBinaryRoundtrip() throws {
-        let config: AtmosphereConfig = .earth
+        let config: AtmosphereConfiguration = .earth
         let ion: Ion = .encode(atomic: config)
-        let decoded: AtmosphereConfig = try ion.decode(atomic: AtmosphereConfig.self)
+        let decoded: AtmosphereConfiguration = try ion.decode()
 
         #expect(decoded.name == "Earth")
         #expect(decoded.radius_bottom == config.radius_bottom)
@@ -44,7 +45,7 @@ import Testing
 
         #expect(compressed.count < data.count * MemoryLayout<SIMD4<Float>>.size)
 
-        let descriptor: AtmosphereDescriptor.TableDescriptor = .init(
+        let descriptor: Atmosphere.Table = .init(
             x: width,
             y: height,
             z: depth,
@@ -76,7 +77,7 @@ import Testing
             count: (x: width, y: height, z: 1)
         )
 
-        let descriptor: AtmosphereDescriptor.TableDescriptor = .init(
+        let descriptor: Atmosphere.Table = .init(
             x: width,
             y: height,
             z: 1,
@@ -116,21 +117,16 @@ import Testing
     }
 
     @Test static func AtmosphereArchiveSinglePlanetRoundtrip() async throws {
-        let earthConfig: AtmosphereConfig = .earth
-        let archive: AtmosphereArchive = try await .bake(
-            config: earthConfig,
-            workers: 4,
-            detail: 1
-        )
+        let archive: AtmosphereArchive = await .bake(.earth, detail: 1, workers: 4)
         #expect(archive.name == "Earth")
 
-        let tables: [AtmosphereDescriptor.TableDescriptor] = [
-            archive.atmosphere.tables.transmittance,
-            archive.atmosphere.tables.scattering,
-            archive.atmosphere.tables.irradiance,
+        let tables: [Atmosphere.Table] = [
+            archive.atmosphere.transmittance,
+            archive.atmosphere.scattering,
+            archive.atmosphere.irradiance,
         ]
         var totalRawBytes: Int = 0
-        for desc: AtmosphereDescriptor.TableDescriptor in tables {
+        for desc: Atmosphere.Table in tables {
             let texels: Int = desc.x * desc.y * desc.z
             totalRawBytes += texels * MemoryLayout<SIMD4<Float>>.stride
         }
@@ -139,36 +135,35 @@ import Testing
         #expect(ion.bytes.count > 0)
         #expect(ion.bytes.count < totalRawBytes)
 
-        let deserialized: AtmosphereArchive = try .deserialize(from: ion.bytes)
-        #expect(deserialized.version == AtmosphereArchive.currentVersion)
+        let deserialized: AtmosphereArchive = try ion.decode()
         #expect(deserialized.name == "Earth")
 
         #expect(deserialized.atmosphere.parameters.radius_bottom == 6360000.0)
 
-        let transmittanceDescriptor: AtmosphereDescriptor.TableDescriptor = deserialized.atmosphere.tables.transmittance
+        let transmittanceDescriptor: Atmosphere.Table = deserialized.atmosphere.transmittance
         let transmittance: [SIMD4<Float>] = try transmittanceDescriptor.decompress()
         #expect(
             transmittance.count == transmittanceDescriptor.x * transmittanceDescriptor.y
         )
 
-        let scatteringDescriptor: AtmosphereDescriptor.TableDescriptor = deserialized.atmosphere.tables.scattering
+        let scatteringDescriptor: Atmosphere.Table = deserialized.atmosphere.scattering
         let scattering: [SIMD4<Float>] = try scatteringDescriptor.decompress()
         #expect(
             scattering.count == scatteringDescriptor.x * scatteringDescriptor.y * scatteringDescriptor.z
         )
 
-        let irradianceDescriptor: AtmosphereDescriptor.TableDescriptor = deserialized.atmosphere.tables.irradiance
+        let irradianceDescriptor: Atmosphere.Table = deserialized.atmosphere.irradiance
         let irradiance: [SIMD4<Float>] = try irradianceDescriptor.decompress()
         #expect(irradiance.count == irradianceDescriptor.x * irradianceDescriptor.y)
     }
 
     @Test static func AtmosphereArchiveMultiPlanetBake() async throws {
-        let earthConfig: AtmosphereConfig = .earth
-        let marsConfig: AtmosphereConfig = .mars
-        let archives: [AtmosphereArchive] = try await AtmosphereArchive.bake(
-            configs: [earthConfig, marsConfig],
+        let earth: AtmosphereConfiguration = .earth
+        let mars: AtmosphereConfiguration = .mars
+        let archives: [AtmosphereArchive] = await AtmosphereArchive.bake(
+            bodies: [earth, mars],
+            detail: 1,
             workers: 4,
-            detail: 1
         )
         #expect(archives.count == 2)
         #expect(archives[0].name == "Earth")
@@ -205,33 +200,28 @@ import Testing
             nz: dummyFace
         )
 
-        let earthConfig: AtmosphereConfig = .earth
-        let earthAtmo: AtmosphereArchive = try await .bake(
-            config: earthConfig,
-            workers: 4,
-            detail: 1
-        )
+        let original: AtmosphereArchive = await .bake(.earth, detail: 1, workers: 4)
 
         let earthEntry: AuraArchive.Body = .init(
             name: "Earth",
             spheroid: .init(
                 radius: 6371.0,
+                relief: 1,
                 tilt: 0.4084,
                 flattening: 0.00335,
-                reliefScale: 1.0
             ),
             albedo: dummyAlbedo,
             relief: dummyRelief,
-            atmosphere: earthAtmo.atmosphere
+            atmosphere: original.atmosphere
         )
 
         let moonEntry: AuraArchive.Body = .init(
             name: "The Moon",
             spheroid: .init(
                 radius: 1737.4,
+                relief: 1.5,
                 tilt: 0.0269,
                 flattening: 0.0,
-                reliefScale: 1.5
             ),
             albedo: dummyAlbedo,
             relief: nil,
@@ -255,7 +245,7 @@ import Testing
 
         let roundtripMoon: AuraArchive.Body = try #require(deserialized["The Moon"])
         #expect(roundtripMoon.spheroid.radius == 1737.4)
-        #expect(roundtripMoon.spheroid.reliefScale == 1.5)
+        #expect(roundtripMoon.spheroid.relief == 1.5)
         #expect(roundtripMoon.relief == nil)
         #expect(roundtripMoon.atmosphere == nil)
     }
@@ -281,7 +271,7 @@ import Testing
 
     @Test static func TableDecompressionThrowsOnCorrupt() throws {
         let corrupt: [UInt8] = [0x01, 0x02, 0x03, 0x04]
-        let descriptor: AtmosphereDescriptor.TableDescriptor = .init(
+        let descriptor: Atmosphere.Table = .init(
             x: 16,
             y: 16,
             z: 1,
@@ -290,57 +280,5 @@ import Testing
         #expect(throws: (any Error).self) {
             _ = try descriptor.decompress()
         }
-    }
-}
-
-extension AtmosphereConfig {
-    static var earth: Self {
-        .init(
-            name: "Earth",
-            radius_bottom: 6360000.0,
-            radius_top: 6420000.0,
-            sun_angular_radius: 0.004675,
-            max_sun_zenith_angle: 102.0,
-            rayleigh_scale_height: 8000.0,
-            rayleigh_scattering: [
-                5.8023393817123834e-06,
-                1.3557762447920223e-05,
-                3.3100005976367735e-05
-            ],
-            mie_scale_height: 1200.0,
-            mie_scattering: [3.996e-06, 3.996e-06, 3.996e-06],
-            mie_extinction: [4.44e-06, 4.44e-06, 4.44e-06],
-            mie_albedo: 0.9,
-            mie_g: 0.8,
-            ozone_extinction: [7.206534e-07, 1.7710017e-06, 6.5216177e-08],
-            ozone_altitude: 25000.0,
-            ozone_thickness: 15000.0,
-            solar_irradiance: [1.49265, 1.850945, 1.7622550000000001],
-            ground_albedo: [0.1, 0.1, 0.1]
-        )
-    }
-
-    static var mars: Self {
-        .init(
-            name: "Mars",
-            radius_bottom: 3389500.0,
-            radius_top: 3450000.0,
-            sun_angular_radius: 0.003067,
-            max_sun_zenith_angle: 100.0,
-            rayleigh_scale_height: 11100.0,
-            rayleigh_scattering: [1.9e-07, 4.5e-07, 1.1e-06],
-            mie_scale_height: 2000.0,
-            mie_scattering: [4.0e-06, 3.2e-06, 2.0e-06],
-            mie_extinction: [4.5e-06, 3.8e-06, 2.8e-06],
-            mie_albedo: 0.85,
-            mie_g: 0.7,
-            solar_irradiance: [0.642, 0.796, 0.758],
-            ground_albedo: [0.25, 0.15, 0.1]
-        )
-    }
-}
-extension AuraArchive {
-    subscript(name: String) -> Body? {
-        self.bodies.first { $0.name == name }
     }
 }

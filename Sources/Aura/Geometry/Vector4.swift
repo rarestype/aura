@@ -1,7 +1,7 @@
-import Ion
+public import Ion
 
-struct Vector4<Scalar>: Hashable where Scalar: SIMDScalar {
-    var storage: SIMD4<Scalar>
+@frozen @usableFromInline struct Vector4<Scalar>: Hashable where Scalar: SIMDScalar {
+    @usableFromInline var storage: SIMD4<Scalar>
 
     init(_ storage: SIMD4<Scalar>) {
         self.storage = storage
@@ -23,10 +23,10 @@ extension Vector4 {
     }
 }
 extension Vector4: CustomStringConvertible {
-    var description: String { "\(self.tuple)" }
+    @inlinable var description: String { "\(self.tuple)" }
 }
 extension Vector4 {
-    var x: Scalar {
+    @inlinable var x: Scalar {
         get {
             self.storage.x
         }
@@ -34,7 +34,7 @@ extension Vector4 {
             self.storage.x = x
         }
     }
-    var y: Scalar {
+    @inlinable var y: Scalar {
         get {
             self.storage.y
         }
@@ -42,7 +42,7 @@ extension Vector4 {
             self.storage.y = y
         }
     }
-    var z: Scalar {
+    @inlinable var z: Scalar {
         get {
             self.storage.z
         }
@@ -50,7 +50,7 @@ extension Vector4 {
             self.storage.z = z
         }
     }
-    var w: Scalar {
+    @inlinable var w: Scalar {
         get {
             self.storage.w
         }
@@ -59,7 +59,7 @@ extension Vector4 {
         }
     }
 
-    var tuple: (Scalar, Scalar, Scalar, Scalar) {
+    @inlinable var tuple: (Scalar, Scalar, Scalar, Scalar) {
         (self.x, self.y, self.z, self.w)
     }
 
@@ -473,7 +473,7 @@ extension Vector4 where Scalar: FloatingPoint {
 }
 
 extension Vector4: IonEncodable, IonEncodableList where Scalar: IonEncodable {
-    func encode(to ion: inout Ion.ListEncoder) {
+    @usableFromInline func encode(to ion: inout Ion.ListEncoder) {
         ion[+] = self.x
         ion[+] = self.y
         ion[+] = self.z
@@ -482,7 +482,7 @@ extension Vector4: IonEncodable, IonEncodableList where Scalar: IonEncodable {
 }
 
 extension Vector4: IonDecodable, IonDecodableList where Scalar: IonDecodable {
-    init(ion: inout Ion.ListDecoder) throws {
+    @usableFromInline init(ion: inout Ion.ListDecoder) throws {
         self.init(
             try ion[+].decode(to: Scalar.self),
             try ion[+].decode(to: Scalar.self),

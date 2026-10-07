@@ -1,13 +1,15 @@
-struct ScatteringTable: AtmosphereTable, Sendable {
-    let context: AtmosphereContext
-    var buffer: [Vector3<Double>]
+extension AtmosphereContext {
+    struct Scattering: Table, Sendable {
+        let context: AtmosphereContext
+        var buffer: [Vector3<Double>]
 
-    var size: Vector3<Int> {
-        self.context.resolution.scattering
+        var size: Vector3<Int> {
+            self.context.resolution.scattering
+        }
     }
 }
 
-extension ScatteringTable {
+extension AtmosphereContext.Scattering {
     subscript(
         r r: Double,
         μ μ: Double,
@@ -60,10 +62,10 @@ extension ScatteringTable {
         ν: Double,
         n: Int,
         samples: Int = 16,
-        transmittance: TransmittanceTable,
+        transmittance: AtmosphereContext.Transmittance,
         rayleigh: Self,
         mie: Self,
-        irradiance: IrradianceTable
+        irradiance: AtmosphereContext.Irradiance
     ) -> Vector3<Double> {
         self.context.assert(r: r, μ: μ)
         AtmosphereContext.assert(μs: μs, ν: ν)
@@ -168,7 +170,7 @@ extension ScatteringTable {
         ν: Double,
         intersectsGround: Bool,
         samples: Int = 50,
-        transmittance: TransmittanceTable
+        transmittance: AtmosphereContext.Transmittance
     ) -> Vector3<Double> {
         self.context.assert(r: r, μ: μ)
         AtmosphereContext.assert(μs: μs, ν: ν)
@@ -204,10 +206,10 @@ extension ScatteringTable {
     func density(
         texel: Vector3<Double>,
         n: Int,
-        transmittance: TransmittanceTable,
+        transmittance: AtmosphereContext.Transmittance,
         rayleigh: Self,
         mie: Self,
-        irradiance: IrradianceTable
+        irradiance: AtmosphereContext.Irradiance
     ) -> Vector3<Double> {
         let (r, μ, μs, ν, _): (
             r: Double,
@@ -225,7 +227,7 @@ extension ScatteringTable {
 
     func multipleScattering(
         texel: Vector3<Double>,
-        transmittance: TransmittanceTable
+        transmittance: AtmosphereContext.Transmittance
     ) -> (radiance: Vector3<Double>, ν: Double) {
         let (r, μ, μs, ν, intersectsGround): (
             r: Double,
@@ -243,7 +245,8 @@ extension ScatteringTable {
     }
 }
 
-extension ScatteringTable /* multiple scattering table*/ {
+// multiple scattering table
+extension AtmosphereContext.Scattering {
     func indirectIrradiance(
         r: Double,
         μs: Double,
@@ -301,7 +304,7 @@ extension ScatteringTable /* multiple scattering table*/ {
     }
 }
 
-extension ScatteringTable: CustomStringConvertible {
+extension AtmosphereContext.Scattering: CustomStringConvertible {
     var description: String {
         """
         Scattering table [\(self.size.x), \(self.size.y), \(self.size.z)]

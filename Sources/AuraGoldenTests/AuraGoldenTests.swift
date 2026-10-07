@@ -1,5 +1,6 @@
 import ArgumentParser
 import Aura
+import AuraTesting
 import CRC
 import Ion
 import SystemIO
@@ -28,11 +29,7 @@ extension AuraGoldenTests: AsyncParsableCommand {
         print("1. Baking Earth atmosphere archive at detail 3...")
         let clock: ContinuousClock = .init()
         let start: ContinuousClock.Instant = clock.now
-        let archive: AtmosphereArchive = try await .bake(
-            config: Self.earth,
-            workers: self.threads,
-            detail: 3
-        )
+        let archive: AtmosphereArchive = await .bake(.earth, detail: 3, workers: self.threads)
         let elapsed: Duration = start.duration(to: clock.now)
         print("   Detail 3 precomputation finished in \(elapsed)!")
 
@@ -49,11 +46,11 @@ extension AuraGoldenTests: AsyncParsableCommand {
         print("3. Extracting tables and checking CRC32 against golden reference...")
 
         // Transmittance
-        let transDesc: AtmosphereDescriptor.TableDescriptor = archive.atmosphere.tables.transmittance
-        guard transDesc.x == 256, transDesc.y == 64 else {
+        let transmittance: Atmosphere.Table = archive.atmosphere.transmittance
+        guard transmittance.x == 256, transmittance.y == 64 else {
             fatalError("Verification failed: Unexpected transmittance resolution!")
         }
-        let transTable: [SIMD4<Float>] = try transDesc.decompress()
+        let transTable: [SIMD4<Float>] = try transmittance.decompress()
         let transCRC: UInt32 = transTable.withUnsafeBytes { raw in
             CRC32.init(hashing: raw).checksum
         }
@@ -71,11 +68,11 @@ extension AuraGoldenTests: AsyncParsableCommand {
         }
 
         // Irradiance
-        let irradDesc: AtmosphereDescriptor.TableDescriptor = archive.atmosphere.tables.irradiance
-        guard irradDesc.x == 64, irradDesc.y == 16 else {
+        let irradiance: Atmosphere.Table = archive.atmosphere.irradiance
+        guard irradiance.x == 64, irradiance.y == 16 else {
             fatalError("Verification failed: Unexpected irradiance resolution!")
         }
-        let irradTable: [SIMD4<Float>] = try irradDesc.decompress()
+        let irradTable: [SIMD4<Float>] = try irradiance.decompress()
         let irradCRC: UInt32 = irradTable.withUnsafeBytes { raw in
             CRC32.init(hashing: raw).checksum
         }
@@ -93,11 +90,11 @@ extension AuraGoldenTests: AsyncParsableCommand {
         }
 
         // Scattering
-        let scatDesc: AtmosphereDescriptor.TableDescriptor = archive.atmosphere.tables.scattering
-        guard scatDesc.x == 256, scatDesc.y == 128, scatDesc.z == 32 else {
+        let scattering: Atmosphere.Table = archive.atmosphere.scattering
+        guard scattering.x == 256, scattering.y == 128, scattering.z == 32 else {
             fatalError("Verification failed: Unexpected scattering resolution!")
         }
-        let scatTable: [SIMD4<Float>] = try scatDesc.decompress()
+        let scatTable: [SIMD4<Float>] = try scattering.decompress()
         let scatCRC: UInt32 = scatTable.withUnsafeBytes { raw in
             CRC32.init(hashing: raw).checksum
         }
@@ -140,7 +137,7 @@ extension AuraGoldenTests: AsyncParsableCommand {
         let deserialized: AtmosphereArchive = try .deserialize(from: ion.bytes)
         let reextractedScattering: [
             SIMD4<Float>
-        ] = try deserialized.atmosphere.tables.scattering.decompress()
+        ] = try deserialized.atmosphere.scattering.decompress()
         guard reextractedScattering == scatTable else {
             fatalError("Verification failed: Table roundtrip mismatch!")
         }
@@ -244,33 +241,5 @@ extension AuraGoldenTests: AsyncParsableCommand {
                 }
             }
         }
-    }
-}
-
-extension AuraGoldenTests {
-    static var earth: AtmosphereConfig {
-        .init(
-            name: "Earth",
-            radius_bottom: 6360000.0,
-            radius_top: 6420000.0,
-            sun_angular_radius: 0.004675,
-            max_sun_zenith_angle: 102.0,
-            rayleigh_scale_height: 8000.0,
-            rayleigh_scattering: [
-                5.8023393817123834e-06,
-                1.3557762447920223e-05,
-                3.3100005976367735e-05
-            ],
-            mie_scale_height: 1200.0,
-            mie_scattering: [3.996e-06, 3.996e-06, 3.996e-06],
-            mie_extinction: [4.44e-06, 4.44e-06, 4.44e-06],
-            mie_albedo: 0.9,
-            mie_g: 0.8,
-            ozone_extinction: [7.206534e-07, 1.7710017e-06, 6.5216177e-08],
-            ozone_altitude: 25000.0,
-            ozone_thickness: 15000.0,
-            solar_irradiance: [1.49265, 1.850945, 1.7622550000000001],
-            ground_albedo: [0.1, 0.1, 0.1]
-        )
     }
 }

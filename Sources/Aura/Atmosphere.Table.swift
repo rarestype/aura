@@ -2,8 +2,8 @@ import AuraDecoding
 public import Ion
 import LZ77
 
-extension AtmosphereDescriptor {
-    public struct TableDescriptor: Sendable {
+extension Atmosphere {
+    @frozen public struct Table: Sendable {
         public let x: Int
         public let y: Int
         public let z: Int
@@ -22,11 +22,28 @@ extension AtmosphereDescriptor {
         }
     }
 }
-
-extension AtmosphereDescriptor.TableDescriptor {
+extension Atmosphere.Table {
     @inlinable public var volume: Int { self.x * self.y * self.z }
+
+    /// Decompresses and un-filters byte-shuffled data into reconstructed texels.
+    public func decompress() throws -> [SIMD4<Float>] {
+        let pixels: [SIMD4<Float>] = try TableDecoder.decompress(
+            bytes: self.bytes,
+            count: (self.x, self.y, self.z)
+        )
+
+        guard self.volume == pixels.count else {
+            throw Atmosphere.TableError.size(
+                expected: (self.x, self.y, self.z),
+                actual: pixels.count
+            )
+        }
+
+        return pixels
+    }
 }
-extension AtmosphereDescriptor.TableDescriptor {
+
+extension Atmosphere.Table {
     @frozen public enum CodingKey: String, IonSymbolizable {
         case x
         case y
@@ -34,8 +51,7 @@ extension AtmosphereDescriptor.TableDescriptor {
         case bytes
     }
 }
-
-extension AtmosphereDescriptor.TableDescriptor: IonEncodableStruct {
+extension Atmosphere.Table: IonEncodableStruct {
     public func encode(to ion: inout Ion.StructEncoder<CodingKey>) {
         ion[.x] = self.x
         ion[.y] = self.y
@@ -43,8 +59,7 @@ extension AtmosphereDescriptor.TableDescriptor: IonEncodableStruct {
         ion[.bytes] = Ion.BlobView<[UInt8], Ion.BlobType>.init(bytes: self.bytes)
     }
 }
-
-extension AtmosphereDescriptor.TableDescriptor: IonDecodableStruct {
+extension Atmosphere.Table: IonDecodableStruct {
     public init(ion: borrowing Ion.StructDecoder<CodingKey>) throws {
         let x: Int = try ion[.x].decode()
         let y: Int = try ion[.y].decode()
@@ -56,24 +71,5 @@ extension AtmosphereDescriptor.TableDescriptor: IonDecodableStruct {
             z: z,
             bytes: [_].init(blob.bytes)
         )
-    }
-}
-
-extension AtmosphereDescriptor.TableDescriptor {
-    /// Decompresses and un-filters byte-shuffled data into reconstructed texels.
-    public func decompress() throws -> [SIMD4<Float>] {
-        let pixels: [SIMD4<Float>] = try TableDecoder.decompress(
-            bytes: self.bytes,
-            count: (self.x, self.y, self.z)
-        )
-
-        guard self.volume == pixels.count else {
-            throw DecompressionError.decompressedSizeMismatch(
-                expected: self.volume,
-                actual: pixels.count
-            )
-        }
-
-        return pixels
     }
 }

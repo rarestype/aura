@@ -1,7 +1,7 @@
-import Ion
+public import Ion
 
-struct Vector2<Scalar>: Hashable where Scalar: SIMDScalar {
-    var storage: SIMD2<Scalar>
+@frozen @usableFromInline struct Vector2<Scalar>: Hashable where Scalar: SIMDScalar {
+    @usableFromInline var storage: SIMD2<Scalar>
 
     init(_ storage: SIMD2<Scalar>) {
         self.storage = storage
@@ -18,10 +18,10 @@ extension Vector2 {
     }
 }
 extension Vector2: CustomStringConvertible {
-    var description: String { "\(self.tuple)" }
+    @inlinable var description: String { "\(self.tuple)" }
 }
 extension Vector2 {
-    var x: Scalar {
+    @inlinable var x: Scalar {
         get {
             self.storage.x
         }
@@ -29,7 +29,7 @@ extension Vector2 {
             self.storage.x = x
         }
     }
-    var y: Scalar {
+    @inlinable var y: Scalar {
         get {
             self.storage.y
         }
@@ -38,7 +38,7 @@ extension Vector2 {
         }
     }
 
-    var tuple: (Scalar, Scalar) {
+    @inlinable var tuple: (Scalar, Scalar) {
         (self.x, self.y)
     }
 
@@ -436,14 +436,14 @@ extension Vector2 where Scalar: FloatingPoint {
 }
 
 extension Vector2: IonEncodable, IonEncodableList where Scalar: IonEncodable {
-    func encode(to ion: inout Ion.ListEncoder) {
+    @usableFromInline func encode(to ion: inout Ion.ListEncoder) {
         ion[+] = self.x
         ion[+] = self.y
     }
 }
 
 extension Vector2: IonDecodable, IonDecodableList where Scalar: IonDecodable {
-    init(ion: inout Ion.ListDecoder) throws {
+    @usableFromInline init(ion: inout Ion.ListDecoder) throws {
         self.init(
             try ion[+].decode(to: Scalar.self),
             try ion[+].decode(to: Scalar.self)

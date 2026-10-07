@@ -1,13 +1,13 @@
-extension AuraArchive {
+extension AtmosphereArchive {
     enum VersionError: Error {
         case unsupported(Int)
     }
 }
-extension AuraArchive.VersionError: CustomStringConvertible {
+extension AtmosphereArchive.VersionError: CustomStringConvertible {
     var description: String {
         switch self {
         case .unsupported(let version):
-            "unsupported aura archive version: \(version)"
+            "unsupported atmosphere archive version: \(version)"
         }
     }
 }

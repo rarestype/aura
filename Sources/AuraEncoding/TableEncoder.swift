@@ -1,4 +1,4 @@
-public enum TableEncoder {}
+@frozen public enum TableEncoder {}
 
 extension TableEncoder {
     /// Applies PNG Up filtering and 16-plane byte shuffling to a `SIMD4<Float>` texel buffer.

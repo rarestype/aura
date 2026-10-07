@@ -6,14 +6,14 @@ extension AuraArchive {
         public var spheroid: Spheroid
         public var albedo: Cubemap
         public var relief: Cubemap?
-        public var atmosphere: AtmosphereDescriptor?
+        public var atmosphere: Atmosphere?
 
         public init(
             name: String,
             spheroid: Spheroid,
             albedo: Cubemap,
             relief: Cubemap? = nil,
-            atmosphere: AtmosphereDescriptor? = nil
+            atmosphere: Atmosphere? = nil
         ) {
             self.name = name
             self.spheroid = spheroid

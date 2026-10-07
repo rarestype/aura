@@ -1,6 +1,6 @@
 public import Ion
 
-public struct AtmosphereParameters: Sendable {
+@frozen public struct AtmosphereParameters: Sendable {
     public var radius_bottom: Double
     public var radius_top: Double
     public var radius_sun: Double

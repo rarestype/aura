@@ -2,23 +2,20 @@ import AuraEncoding
 public import Ion
 
 public struct AtmosphereArchive {
-    public static var currentVersion: UInt32 { 1 }
-
-    public var version: UInt32
     public var name: String
-    public var atmosphere: AtmosphereDescriptor
+    public var atmosphere: Atmosphere
 
     public init(
-        version: UInt32 = Self.currentVersion,
         name: String,
-        atmosphere: AtmosphereDescriptor
+        atmosphere: Atmosphere
     ) {
-        self.version = version
         self.name = name
         self.atmosphere = atmosphere
     }
 }
-
+extension AtmosphereArchive {
+    public static var version: UInt32 { 1 }
+}
 extension AtmosphereArchive {
     @frozen public enum CodingKey: String, IonSymbolizable {
         case version
@@ -29,7 +26,7 @@ extension AtmosphereArchive {
 
 extension AtmosphereArchive: IonEncodableStruct {
     public func encode(to ion: inout Ion.StructEncoder<CodingKey>) {
-        ion[.version] = self.version
+        ion[.version] = Self.version
         ion[.name] = self.name
         ion[.atmosphere] = self.atmosphere
     }
@@ -37,8 +34,11 @@ extension AtmosphereArchive: IonEncodableStruct {
 
 extension AtmosphereArchive: IonDecodableStruct {
     public init(ion: borrowing Ion.StructDecoder<CodingKey>) throws {
+        let version: Int = try ion[.version].decode()
+        if  version != Self.version {
+            throw VersionError.unsupported(version)
+        }
         self.init(
-            version: try ion[.version].decode(),
             name: try ion[.name].decode(),
             atmosphere: try ion[.atmosphere].decode()
         )
@@ -53,27 +53,22 @@ extension AtmosphereArchive {
     }
 
     /// Deserializes an AtmosphereArchive from binary Ion bytes.
-    public static func deserialize(from archive: ArraySlice<UInt8>) throws -> AtmosphereArchive {
+    @available(*, deprecated, message: "Use Ion.decode(atomic:) instead")
+    public static func deserialize(from archive: ArraySlice<UInt8>) throws -> Self {
         let ion: Ion = .init(bytes: archive)
-        let decoded: AtmosphereArchive = try ion.decode(atomic: AtmosphereArchive.self)
-        guard decoded.version == Self.currentVersion else {
-            throw AtmosphereArchiveError.unsupportedVersion(decoded.version)
-        }
-        return decoded
+        return try ion.decode(atomic: AtmosphereArchive.self)
     }
+}
 
+extension AtmosphereArchive {
     /// Bakes an atmospheric configuration into an uncompressed .atmo archive.
     public static func bake(
-        config: AtmosphereConfig,
+        _ body: AtmosphereConfiguration,
+        detail: Int,
         workers: Int,
-        detail: Int = 3
-    ) async throws -> AtmosphereArchive {
-        guard 1 ... 5 ~= detail else {
-            throw AtmosphereError.invalidDetail(detail)
-        }
-
+    ) async -> AtmosphereArchive {
         let atmosphere: AtmosphereContext = .load(
-            from: config,
+            from: body,
             resolutions: (
                 transmittance: .init(32, 8) &<< detail,
                 scattering: .init(4, 16, 4, 1) &<< detail,
@@ -82,14 +77,14 @@ extension AtmosphereArchive {
         )
 
         let table: (
-            transmittance: TransmittanceTable,
-            mie: ScatteringTable,
-            scattering: ScatteringTable,
-            irradiance: IrradianceTable
+            transmittance: AtmosphereContext.Transmittance,
+            mie: AtmosphereContext.Scattering,
+            scattering: AtmosphereContext.Scattering,
+            irradiance: AtmosphereContext.Irradiance
         ) = await atmosphere.tables(workers: workers)
 
         // 1. Transmittance table
-        let transmittance: AtmosphereDescriptor.TableDescriptor = .init(
+        let transmittance: Atmosphere.Table = .init(
             x: atmosphere.resolution.transmittance.x,
             y: atmosphere.resolution.transmittance.y,
             z: 1,
@@ -106,7 +101,7 @@ extension AtmosphereArchive {
         )
 
         // 2. Scattering table (Mie merged into W)
-        let scattering: AtmosphereDescriptor.TableDescriptor = .init(
+        let scattering: Atmosphere.Table = .init(
             x: atmosphere.resolution.scattering.x,
             y: atmosphere.resolution.scattering.y,
             z: atmosphere.resolution.scattering.z,
@@ -123,7 +118,7 @@ extension AtmosphereArchive {
         )
 
         // 3. Irradiance table
-        let irradiance: AtmosphereDescriptor.TableDescriptor = .init(
+        let irradiance: Atmosphere.Table = .init(
             x: atmosphere.resolution.irradiance.x,
             y: atmosphere.resolution.irradiance.y,
             z: 1,
@@ -157,37 +152,27 @@ extension AtmosphereArchive {
             irradiance: atmosphere.irradiance
         )
 
-        let descriptor: AtmosphereDescriptor = .init(
-            parameters: parameters,
-            tables: .init(
+        return .init(
+            name: body.name,
+            atmosphere: .init(
                 transmittance: transmittance,
                 scattering: scattering,
-                irradiance: irradiance
+                irradiance: irradiance,
+                parameters: parameters
             )
-        )
-
-        return .init(
-            version: Self.currentVersion,
-            name: config.name,
-            atmosphere: descriptor
         )
     }
 
     /// Bakes multiple atmospheric configurations.
     public static func bake(
-        configs: [AtmosphereConfig],
+        bodies: [AtmosphereConfiguration],
+        detail: Int,
         workers: Int,
-        detail: Int = 3
-    ) async throws -> [AtmosphereArchive] {
+    ) async -> [AtmosphereArchive] {
         var archives: [AtmosphereArchive] = []
-        archives.reserveCapacity(configs.count)
-        for config: AtmosphereConfig in configs {
-            let archive: AtmosphereArchive = try await Self.bake(
-                config: config,
-                workers: workers,
-                detail: detail
-            )
-            archives.append(archive)
+        ;   archives.reserveCapacity(bodies.count)
+        for body: AtmosphereConfiguration in bodies {
+            archives.append(await .bake(body, detail: detail, workers: workers))
         }
         return archives
     }

@@ -1,13 +1,15 @@
-struct TransmittanceTable: AtmosphereTable, Sendable {
-    let context: AtmosphereContext
-    var buffer: [Vector3<Double>]
+extension AtmosphereContext {
+    struct Transmittance: Table, Sendable {
+        let context: AtmosphereContext
+        var buffer: [Vector3<Double>]
 
-    var size: Vector2<Int> {
-        self.context.resolution.transmittance
+        var size: Vector2<Int> {
+            self.context.resolution.transmittance
+        }
     }
 }
 
-extension TransmittanceTable {
+extension AtmosphereContext.Transmittance {
     // Transmittance to top
     var top: Top {
         .init(table: self)
@@ -20,7 +22,7 @@ extension TransmittanceTable {
 }
 
 // Single scattering
-extension TransmittanceTable {
+extension AtmosphereContext.Transmittance {
     subscript(
         r r: Double,
         μ μ: Double,
@@ -152,7 +154,7 @@ extension TransmittanceTable {
     }
 }
 
-extension TransmittanceTable: CustomStringConvertible {
+extension AtmosphereContext.Transmittance: CustomStringConvertible {
     var description: String {
         """
         Transmittance table [\(self.size.x), \(self.size.y)]

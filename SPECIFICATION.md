@@ -463,7 +463,7 @@ Sources/Aura/
 ├── AtmosphereDescriptor.TableDescriptor.swift
 ├── AtmosphereDescriptor.TableDescriptor.DecompressionError.swift
 ├── AtmosphereParameters.swift
-├── AtmosphereConfig.swift
+├── AtmosphereConfiguration.swift
 ├── AuraArchive.swift
 ├── AuraArchive.PlanetEntry.swift
 ├── AuraArchive.SurfaceParameters.swift

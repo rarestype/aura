@@ -1,11 +1,13 @@
-protocol AtmosphereTable<Dimensions> {
-    associatedtype Dimensions
-    associatedtype Element
+extension AtmosphereContext {
+    protocol Table<Dimensions> {
+        associatedtype Dimensions
+        associatedtype Element
 
-    var buffer: [Element] { get set }
-    var size: Dimensions { get }
+        var buffer: [Element] { get set }
+        var size: Dimensions { get }
+    }
 }
-extension AtmosphereTable<Vector2<Int>> {
+extension AtmosphereContext.Table<Vector2<Int>> {
     subscript(y y: Int, x x: Int) -> Element {
         get {
             self.buffer[y * self.size.x + x]
@@ -71,7 +73,7 @@ extension AtmosphereTable<Vector2<Int>> {
     }
 }
 
-extension AtmosphereTable<Vector3<Int>> {
+extension AtmosphereContext.Table<Vector3<Int>> {
     subscript(z z: Int, y y: Int, x x: Int) -> Element {
         get {
             self.buffer[(z * self.size.y + y) * self.size.x + x]
@@ -142,7 +144,7 @@ extension AtmosphereTable<Vector3<Int>> {
 }
 
 // Bilinear interpolation
-extension AtmosphereTable<Vector2<Int>> where Element == Vector3<Double> {
+extension AtmosphereContext.Table<Vector2<Int>> where Element == Vector3<Double> {
     subscript(t: Vector2<Double>) -> Vector3<Double> {
         let T: Vector2<Double> = t * .cast(self.size) - 0.5
         let i: (Int, Int),
@@ -161,7 +163,7 @@ extension AtmosphereTable<Vector2<Int>> where Element == Vector3<Double> {
 }
 
 // Trilinear interpolation
-extension AtmosphereTable<Vector3<Int>> where Element == Vector3<Double> {
+extension AtmosphereContext.Table<Vector3<Int>> where Element == Vector3<Double> {
     subscript(t: Vector3<Double>) -> Vector3<Double> {
         let T: Vector3<Double> = t * .cast(self.size) - 0.5
         let i: (Int, Int)

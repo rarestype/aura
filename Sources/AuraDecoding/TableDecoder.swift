@@ -1,4 +1,4 @@
-public enum TableDecoder {}
+@frozen public enum TableDecoder {}
 
 extension TableDecoder {
     /// Inverts byte plane shuffling and PNG Up filtering on a preprocessed buffer,

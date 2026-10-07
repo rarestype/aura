@@ -504,10 +504,10 @@ extension AtmosphereContext {
         workers: Int,
         N: Int = 4
     ) async -> (
-        transmittance: TransmittanceTable,
-        mie: ScatteringTable,
-        scattering: ScatteringTable,
-        irradiance: IrradianceTable
+        transmittance: Transmittance,
+        mie: Scattering,
+        scattering: Scattering,
+        irradiance: Irradiance
     ) {
         let texture: (
             irradiance: [Vector3<Double>],
@@ -515,45 +515,45 @@ extension AtmosphereContext {
             transmittance: [Vector3<Double>]
         )
         // Transmittance
-        texture.transmittance   = await TransmittanceTable.mapIndices(
+        texture.transmittance   = await Transmittance.mapIndices(
             size: self.resolution.transmittance,
             workers: workers
         ) {
             self.transmittance(texel: .cast($0) + 0.5)
         }
-        let transmittance: TransmittanceTable = .init(
+        let transmittance: Transmittance = .init(
             context: self,
             buffer: texture.transmittance
         )
 
         // Direct irradiance
-        texture.irradiance      = await IrradianceTable.mapIndices(
+        texture.irradiance      = await Irradiance.mapIndices(
             size: self.resolution.irradiance,
             workers: workers
         ) {
             transmittance.directIrradiance(texel: .cast($0) + 0.5)
         }
         // Single scattering
-        texture.scattering      = await ScatteringTable.mapIndices(
+        texture.scattering      = await Scattering.mapIndices(
             size: self.resolution.scattering,
             workers: workers
         ) {
             transmittance.singleScattering(texel: .cast($0) + 0.5)
         }
 
-        var Δirradiance: IrradianceTable = .init(context: self, buffer: texture.irradiance)
-        let Δrayleigh: ScatteringTable = .init(
+        var Δirradiance: Irradiance = .init(context: self, buffer: texture.irradiance)
+        let Δrayleigh: Scattering = .init(
             context: self,
             buffer: texture.scattering.map(\.rayleigh)
         ),
-        Δmie: ScatteringTable = .init(
+        Δmie: Scattering = .init(
             context: self,
             buffer: texture.scattering.map(\.mie)
         )
 
         // Compute successive scattering orders
         // For `n == 2`, `buffer` is never read anyway
-        var Δscattering: ScatteringTable = .init(
+        var Δscattering: Scattering = .init(
             context: self,
             buffer: .init(repeating: .zero, count: self.resolution.scattering.wrappingVolume)
         )
@@ -566,8 +566,8 @@ extension AtmosphereContext {
         )
         for n: Int in 2 ... N {
             let previous: (
-                scattering: ScatteringTable,
-                irradiance: IrradianceTable
+                scattering: Scattering,
+                irradiance: Irradiance
             ) = (Δscattering, Δirradiance)
 
             let texture: (
@@ -576,7 +576,7 @@ extension AtmosphereContext {
                 scattering: [(Vector3<Double>, ν: Double)]
             )
 
-            texture.irradiance = await IrradianceTable.mapIndices(
+            texture.irradiance = await Irradiance.mapIndices(
                 size: self.resolution.irradiance,
                 workers: workers
             ) {
@@ -585,7 +585,7 @@ extension AtmosphereContext {
                     rayleigh: Δrayleigh, mie: Δmie
                 )
             }
-            texture.density = await ScatteringTable.mapIndices(
+            texture.density = await Scattering.mapIndices(
                 size: self.resolution.scattering,
                 workers: workers
             ) {
@@ -596,8 +596,8 @@ extension AtmosphereContext {
             }
 
             // Multiple scattering
-            let density: ScatteringTable = .init(context: self, buffer: texture.density)
-            texture.scattering = await ScatteringTable.mapIndices(
+            let density: Scattering = .init(context: self, buffer: texture.density)
+            texture.scattering = await Scattering.mapIndices(
                 size: self.resolution.scattering,
                 workers: workers
             ) {
@@ -656,7 +656,7 @@ extension AtmosphereContext: CustomStringConvertible {
 
 extension AtmosphereContext {
     static func load(
-        from config: AtmosphereConfig,
+        from config: AtmosphereConfiguration,
         resolutions resolution: (
             transmittance: Vector2<Int>,
             scattering: Vector4<Int>,
