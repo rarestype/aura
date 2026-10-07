@@ -1,8 +1,8 @@
 import Aura
-public import Ion
+import Ion
 
 extension PackagingManifest {
-    public struct PlanetEntry: Sendable {
+    struct PlanetEntry: Sendable {
         public var name: String
         public var textures: String
         public var atmosphere: String?
@@ -23,7 +23,7 @@ extension PackagingManifest {
 }
 
 extension PackagingManifest.PlanetEntry {
-    @frozen public enum CodingKey: String, IonSymbolizable {
+    enum CodingKey: String, IonSymbolizable {
         case name
         case textures
         case atmosphere
@@ -32,7 +32,7 @@ extension PackagingManifest.PlanetEntry {
 }
 
 extension PackagingManifest.PlanetEntry: IonEncodableStruct {
-    public func encode(to ion: inout Ion.StructEncoder<CodingKey>) {
+    func encode(to ion: inout Ion.StructEncoder<CodingKey>) {
         ion[.name] = self.name
         ion[.textures] = self.textures
         ion[.atmosphere] = self.atmosphere
@@ -41,7 +41,7 @@ extension PackagingManifest.PlanetEntry: IonEncodableStruct {
 }
 
 extension PackagingManifest.PlanetEntry: IonDecodableStruct {
-    public init(ion: borrowing Ion.StructDecoder<CodingKey>) throws {
+    init(ion: borrowing Ion.StructDecoder<CodingKey>) throws {
         self.init(
             name: try ion[.name].decode(),
             textures: try ion[.textures].decode(),

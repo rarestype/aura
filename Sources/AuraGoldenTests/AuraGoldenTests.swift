@@ -1,6 +1,7 @@
 import ArgumentParser
 import Aura
 import CRC
+import Ion
 import SystemIO
 import SystemPackage
 
@@ -49,10 +50,10 @@ extension AuraGoldenTests: AsyncParsableCommand {
 
         // Transmittance
         let transDesc: AtmosphereDescriptor.TableDescriptor = archive.atmosphere.tables.transmittance
-        guard transDesc.width == 256, transDesc.height == 64 else {
+        guard transDesc.x == 256, transDesc.y == 64 else {
             fatalError("Verification failed: Unexpected transmittance resolution!")
         }
-        let transTable: [SIMD4<Float>] = try transDesc.decode()
+        let transTable: [SIMD4<Float>] = try transDesc.decompress()
         let transCRC: UInt32 = transTable.withUnsafeBytes { raw in
             CRC32.init(hashing: raw).checksum
         }
@@ -71,10 +72,10 @@ extension AuraGoldenTests: AsyncParsableCommand {
 
         // Irradiance
         let irradDesc: AtmosphereDescriptor.TableDescriptor = archive.atmosphere.tables.irradiance
-        guard irradDesc.width == 64, irradDesc.height == 16 else {
+        guard irradDesc.x == 64, irradDesc.y == 16 else {
             fatalError("Verification failed: Unexpected irradiance resolution!")
         }
-        let irradTable: [SIMD4<Float>] = try irradDesc.decode()
+        let irradTable: [SIMD4<Float>] = try irradDesc.decompress()
         let irradCRC: UInt32 = irradTable.withUnsafeBytes { raw in
             CRC32.init(hashing: raw).checksum
         }
@@ -93,10 +94,10 @@ extension AuraGoldenTests: AsyncParsableCommand {
 
         // Scattering
         let scatDesc: AtmosphereDescriptor.TableDescriptor = archive.atmosphere.tables.scattering
-        guard scatDesc.width == 256, scatDesc.height == 128, scatDesc.depth == 32 else {
+        guard scatDesc.x == 256, scatDesc.y == 128, scatDesc.z == 32 else {
             fatalError("Verification failed: Unexpected scattering resolution!")
         }
-        let scatTable: [SIMD4<Float>] = try scatDesc.decode()
+        let scatTable: [SIMD4<Float>] = try scatDesc.decompress()
         let scatCRC: UInt32 = scatTable.withUnsafeBytes { raw in
             CRC32.init(hashing: raw).checksum
         }
@@ -135,18 +136,18 @@ extension AuraGoldenTests: AsyncParsableCommand {
         }
 
         print("4. Verifying archive serialization and deserialization roundtrip...")
-        let archiveBytes: [UInt8] = try archive.serialize()
-        let deserialized: AtmosphereArchive = try .deserialize(from: archiveBytes)
+        let ion: Ion = .encode(atomic: archive)
+        let deserialized: AtmosphereArchive = try .deserialize(from: ion.bytes)
         let reextractedScattering: [
             SIMD4<Float>
-        ] = try deserialized.atmosphere.tables.scattering.decode()
+        ] = try deserialized.atmosphere.tables.scattering.decompress()
         guard reextractedScattering == scatTable else {
             fatalError("Verification failed: Table roundtrip mismatch!")
         }
         print(
             """
                Archive serialized (\(
-                archiveBytes.count
+                ion.bytes.count
             ) bytes) and deserialized successfully!
             """
         )

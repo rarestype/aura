@@ -47,14 +47,14 @@ extension AtmosphereArchive: IonDecodableStruct {
 
 extension AtmosphereArchive {
     /// Serializes the archive as an uncompressed binary Ion structure.
-    public func serialize() throws -> [UInt8] {
-        let ion: Ion = .encode(atomic: self)
-        return .init(ion.bytes)
+    @available(*, deprecated, message: "Use Ion.encode(atomic:) instead")
+    public func serialize() throws -> Ion {
+        .encode(atomic: self)
     }
 
     /// Deserializes an AtmosphereArchive from binary Ion bytes.
-    public static func deserialize(from archive: [UInt8]) throws -> AtmosphereArchive {
-        let ion: Ion = .init(bytes: archive[...])
+    public static func deserialize(from archive: ArraySlice<UInt8>) throws -> AtmosphereArchive {
+        let ion: Ion = .init(bytes: archive)
         let decoded: AtmosphereArchive = try ion.decode(atomic: AtmosphereArchive.self)
         guard decoded.version == Self.currentVersion else {
             throw AtmosphereArchiveError.unsupportedVersion(decoded.version)
@@ -90,10 +90,10 @@ extension AtmosphereArchive {
 
         // 1. Transmittance table
         let transmittance: AtmosphereDescriptor.TableDescriptor = .init(
-            width: atmosphere.resolution.transmittance.x,
-            height: atmosphere.resolution.transmittance.y,
-            depth: nil,
-            data: TableEncoder.compress(
+            x: atmosphere.resolution.transmittance.x,
+            y: atmosphere.resolution.transmittance.y,
+            z: 1,
+            bytes: TableEncoder.compress(
                 simd4: table.transmittance.buffer.map {
                     .init(.init($0.x), .init($0.y), .init($0.z), 1.0)
                 },
@@ -107,10 +107,10 @@ extension AtmosphereArchive {
 
         // 2. Scattering table (Mie merged into W)
         let scattering: AtmosphereDescriptor.TableDescriptor = .init(
-            width: atmosphere.resolution.scattering.x,
-            height: atmosphere.resolution.scattering.y,
-            depth: atmosphere.resolution.scattering.z,
-            data: TableEncoder.compress(
+            x: atmosphere.resolution.scattering.x,
+            y: atmosphere.resolution.scattering.y,
+            z: atmosphere.resolution.scattering.z,
+            bytes: TableEncoder.compress(
                 simd4: zip(table.scattering.buffer, table.mie.buffer).map {
                     .init(.init($0.x), .init($0.y), .init($0.z), .init($1.x))
                 },
@@ -124,10 +124,10 @@ extension AtmosphereArchive {
 
         // 3. Irradiance table
         let irradiance: AtmosphereDescriptor.TableDescriptor = .init(
-            width: atmosphere.resolution.irradiance.x,
-            height: atmosphere.resolution.irradiance.y,
-            depth: nil,
-            data: TableEncoder.compress(
+            x: atmosphere.resolution.irradiance.x,
+            y: atmosphere.resolution.irradiance.y,
+            z: 1,
+            bytes: TableEncoder.compress(
                 simd4: table.irradiance.buffer.map {
                     .init(.init($0.x), .init($0.y), .init($0.z), 1.0)
                 },

@@ -1,4 +1,4 @@
-import Ion
+public import Ion
 
 public struct AtmosphereParameters: Sendable {
     public var radius_bottom: Double

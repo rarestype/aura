@@ -20,13 +20,10 @@ let package: Package = .init(
     ],
     targets: [
         .target(
-            name: "AuraDecoding"
+            name: "AuraDecoding",
         ),
         .target(
             name: "AuraEncoding",
-            dependencies: [
-                .product(name: "LZ77", package: "swift-png"),
-            ]
         ),
         .target(
             name: "Aura",
@@ -70,6 +67,9 @@ for target: Target in package.targets {
     {
         var settings: [SwiftSetting] = $0 ?? []
         settings.append(.enableUpcomingFeature("ExistentialAny"))
+        settings.append(.enableUpcomingFeature("MemberImportVisibility"))
+        settings.append(.enableUpcomingFeature("InternalImportsByDefault"))
+        settings.append(.enableExperimentalFeature("StrictConcurrency"))
         $0 = settings
     } (&target.swiftSettings)
 }

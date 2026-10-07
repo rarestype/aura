@@ -1,35 +1,10 @@
-@testable import Aura
+import Aura
 import AuraDecoding
 import AuraEncoding
 import Ion
 import Testing
 
 @Suite struct AuraTests {
-    @Test static func EarthParametersMatch() throws {
-        let resolutions: (
-            transmittance: Vector2<Int>,
-            scattering: Vector4<Int>,
-            irradiance: Vector2<Int>
-        ) = (
-            transmittance: Vector2<Int>.init(32, 8)       &<< 1,
-            scattering: Vector4<Int>.init(4, 16, 4, 1) &<< 1,
-            irradiance: Vector2<Int>.init(8, 2)        &<< 1
-        )
-        let reference: Atmosphere = .earth(resolutions: resolutions)
-        let config: AtmosphereConfig = .earth
-        let parameterized: Atmosphere = .from(config: config, resolutions: resolutions)
-
-        #expect(reference.radius == parameterized.radius)
-        #expect(reference.rayleigh.scattering == parameterized.rayleigh.scattering)
-        #expect(reference.mie.scattering == parameterized.mie.scattering)
-        #expect(reference.mie.extinction == parameterized.mie.extinction)
-        #expect(reference.mie.g == parameterized.mie.g)
-        #expect(reference.irradiance == parameterized.irradiance)
-        #expect(reference.ground == parameterized.ground)
-        #expect(reference.μsmin == parameterized.μsmin)
-        #expect(reference.absorption.extinction == parameterized.absorption.extinction)
-    }
-
     @Test static func IonBinaryRoundtrip() throws {
         let config: AtmosphereConfig = .earth
         let ion: Ion = .encode(atomic: config)
@@ -70,12 +45,12 @@ import Testing
         #expect(compressed.count < data.count * MemoryLayout<SIMD4<Float>>.size)
 
         let descriptor: AtmosphereDescriptor.TableDescriptor = .init(
-            width: width,
-            height: height,
-            depth: depth,
-            data: compressed
+            x: width,
+            y: height,
+            z: depth,
+            bytes: compressed
         )
-        let decompressed: [SIMD4<Float>] = try descriptor.decode()
+        let decompressed: [SIMD4<Float>] = try descriptor.decompress()
 
         #expect(decompressed.count == data.count)
         #expect(decompressed == data)
@@ -102,12 +77,12 @@ import Testing
         )
 
         let descriptor: AtmosphereDescriptor.TableDescriptor = .init(
-            width: width,
-            height: height,
-            depth: 1,
-            data: compressed
+            x: width,
+            y: height,
+            z: 1,
+            bytes: compressed
         )
-        let decompressed: [SIMD4<Float>] = try descriptor.decode()
+        let decompressed: [SIMD4<Float>] = try descriptor.decompress()
 
         #expect(decompressed.count == data.count)
         #expect(decompressed == data)
@@ -133,40 +108,11 @@ import Testing
         )
 
         let decoded: [SIMD4<Float>] = TableDecoder.decode(
-            shuffled: encoded,
-            width: width,
-            height: height,
-            depth: depth
+            bytes: encoded,
+            count: (x: width, y: height, z: depth)
         )
 
         #expect(decoded == data)
-
-        var inoutDecoded: [SIMD4<Float>] = .init(
-            repeating: .zero,
-            count: width * height * depth
-        )
-        TableDecoder.decode(
-            shuffled: encoded,
-            into: &inoutDecoded,
-            width: width,
-            height: height,
-            depth: depth
-        )
-        #expect(inoutDecoded == data)
-
-        var rawBytesDecoded: [UInt8] = .init(repeating: 0, count: width * height * depth * 16)
-        TableDecoder.decode(
-            shuffled: encoded,
-            into: &rawBytesDecoded,
-            width: width,
-            height: height,
-            depth: depth,
-            bpp: 16
-        )
-        let rawMatches: Bool = data.withUnsafeBytes { rawData in
-            rawBytesDecoded == Array(rawData)
-        }
-        #expect(rawMatches)
     }
 
     @Test static func AtmosphereArchiveSinglePlanetRoundtrip() async throws {
@@ -185,37 +131,35 @@ import Testing
         ]
         var totalRawBytes: Int = 0
         for desc: AtmosphereDescriptor.TableDescriptor in tables {
-            let texels: Int = desc.width * desc.height * (desc.depth ?? 1)
+            let texels: Int = desc.x * desc.y * desc.z
             totalRawBytes += texels * MemoryLayout<SIMD4<Float>>.stride
         }
 
-        let archiveBytes: [UInt8] = try archive.serialize()
-        #expect(archiveBytes.count > 0)
-        #expect(archiveBytes.count < totalRawBytes)
+        let ion: Ion = .encode(atomic: archive)
+        #expect(ion.bytes.count > 0)
+        #expect(ion.bytes.count < totalRawBytes)
 
-        let deserialized: AtmosphereArchive = try .deserialize(from: archiveBytes)
+        let deserialized: AtmosphereArchive = try .deserialize(from: ion.bytes)
         #expect(deserialized.version == AtmosphereArchive.currentVersion)
         #expect(deserialized.name == "Earth")
 
         #expect(deserialized.atmosphere.parameters.radius_bottom == 6360000.0)
 
         let transmittanceDescriptor: AtmosphereDescriptor.TableDescriptor = deserialized.atmosphere.tables.transmittance
-        let transmittance: [SIMD4<Float>] = try transmittanceDescriptor.decode()
+        let transmittance: [SIMD4<Float>] = try transmittanceDescriptor.decompress()
         #expect(
-            transmittance.count == transmittanceDescriptor.width * transmittanceDescriptor.height
+            transmittance.count == transmittanceDescriptor.x * transmittanceDescriptor.y
         )
 
         let scatteringDescriptor: AtmosphereDescriptor.TableDescriptor = deserialized.atmosphere.tables.scattering
-        let scattering: [SIMD4<Float>] = try scatteringDescriptor.decode()
+        let scattering: [SIMD4<Float>] = try scatteringDescriptor.decompress()
         #expect(
-            scattering.count == scatteringDescriptor.width * scatteringDescriptor.height * (
-                scatteringDescriptor.depth ?? 1
-            )
+            scattering.count == scatteringDescriptor.x * scatteringDescriptor.y * scatteringDescriptor.z
         )
 
         let irradianceDescriptor: AtmosphereDescriptor.TableDescriptor = deserialized.atmosphere.tables.irradiance
-        let irradiance: [SIMD4<Float>] = try irradianceDescriptor.decode()
-        #expect(irradiance.count == irradianceDescriptor.width * irradianceDescriptor.height)
+        let irradiance: [SIMD4<Float>] = try irradianceDescriptor.decompress()
+        #expect(irradiance.count == irradianceDescriptor.x * irradianceDescriptor.y)
     }
 
     @Test static func AtmosphereArchiveMultiPlanetBake() async throws {
@@ -337,13 +281,13 @@ import Testing
     @Test static func TableDecompressionThrowsOnCorrupt() throws {
         let corrupt: [UInt8] = [0x01, 0x02, 0x03, 0x04]
         let descriptor: AtmosphereDescriptor.TableDescriptor = .init(
-            width: 16,
-            height: 16,
-            depth: 1,
-            data: corrupt
+            x: 16,
+            y: 16,
+            z: 1,
+            bytes: corrupt
         )
         #expect(throws: (any Error).self) {
-            _ = try descriptor.decode()
+            _ = try descriptor.decompress()
         }
     }
 }

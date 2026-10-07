@@ -1,32 +1,20 @@
-import LZ77
-
 public enum TableEncoder {}
 
-extension TableEncoder {
-    /// Compresses a buffer of `SIMD4<Float>` texels using PNG Up filtering,
-    /// 16-plane byte shuffling, and Deflate compression.
-    public static func compress(
-        simd4: [SIMD4<Float>],
-        count: (x: Int, y: Int, z: Int),
-        level: Int = 7
-    ) -> [UInt8] {
-        let shuffled: [UInt8] = Self.encode(simd4: simd4, count: count)
-        return Self.deflate(shuffled[...], level: level)
-    }
-}
 extension TableEncoder {
     /// Applies PNG Up filtering and 16-plane byte shuffling to a `SIMD4<Float>` texel buffer.
     public static func encode(
         simd4: [SIMD4<Float>],
         count: (x: Int, y: Int, z: Int),
     ) -> [UInt8] {
-        simd4.withUnsafeBytes { Self.encode(bytes: $0, count: count, stride: 16) }
+        simd4.withUnsafeBytes {
+            Self.encode(bytes: $0, count: count, stride: MemoryLayout<SIMD4<Float>>.stride)
+        }
     }
 
     private static func encode(
         bytes: UnsafeRawBufferPointer,
         count: (x: Int, y: Int, z: Int),
-        stride bpp: Int = 16
+        stride bpp: Int,
     ) -> [UInt8] {
         let volume: Int = count.x * count.y * count.z
 
@@ -70,16 +58,5 @@ extension TableEncoder {
 
             $1 = bytes.count
         }
-    }
-
-    /// Compresses data using Zlib (RFC 1950).
-    private static func deflate(_ data: ArraySlice<UInt8>, level: Int) -> [UInt8] {
-        var deflator: LZ77.Deflator = .init(format: .zlib, level: level, hint: 128 << 10)
-        ;   deflator.push(data, last: true)
-        var compressed: [UInt8] = []
-        while let part: [UInt8] = deflator.pull() {
-            compressed += part
-        }
-        return compressed
     }
 }

@@ -94,8 +94,8 @@ extension AuraCLI {
                     throw ValidationError("Atmosphere intermediate not found at '\(atmoString)'")
                 }
                 do {
-                    let atmoBytes: [UInt8] = try atmoPath.read([UInt8].self)
-                    let atmoArchive: AtmosphereArchive = try .deserialize(from: atmoBytes)
+                    let bytes: [UInt8] = try atmoPath.read([UInt8].self)
+                    let atmoArchive: AtmosphereArchive = try .deserialize(from: bytes[...])
                     atmosphereDescriptor = atmoArchive.atmosphere
                 } catch {
                     throw ValidationError("Atmosphere intermediate not found at '\(atmoString)'")
@@ -175,8 +175,8 @@ extension AuraCLI {
                         throw ValidationError("Atmosphere intermediate not found at '\(atmoRel)'")
                     }
                     do {
-                        let atmoBytes: [UInt8] = try atmoPath.read([UInt8].self)
-                        let atmoArchive: AtmosphereArchive = try .deserialize(from: atmoBytes)
+                        let bytes: [UInt8] = try atmoPath.read([UInt8].self)
+                        let atmoArchive: AtmosphereArchive = try .deserialize(from: bytes[...])
                         atmosphereDescriptor = atmoArchive.atmosphere
                     } catch {
                         throw ValidationError("Atmosphere intermediate not found at '\(atmoRel)'")
