@@ -1,0 +1,299 @@
+import ArgumentParser
+import Aura
+import Ion
+import SystemIO
+import SystemPackage
+
+extension AuraCLI {
+    struct Pack {
+        @Argument(
+            help: """
+            Directory containing surface cubemap faces \
+            (px.webp, nx.webp, py.webp, ny.webp, pz.webp, nz.webp)
+            """
+        ) var textures: String?
+
+        @Option(
+            name: .customLong("manifest"),
+            help: "Path to an assembly manifest Ion file"
+        ) var manifest: String?
+
+        @Option(
+            name: .customLong("name"),
+            help: "Planet name (defaults to texture directory name)"
+        ) var name: String?
+
+        @Option(
+            name: .customLong("atmosphere"),
+            help: "Path to .atmo intermediate file"
+        ) var atmosphere: String?
+
+        @Option(
+            name: .customLong("relief-scale"),
+            help: "Relief elevation scale"
+        ) var reliefScale: Double?
+
+        @Option(
+            name: .customLong("radius"),
+            help: "Body radius in kilometers"
+        ) var radius: Double?
+
+        @Option(
+            name: .customLong("tilt"),
+            help: "Axial tilt in radians"
+        ) var tilt: Double?
+
+        @Option(
+            name: .customLong("flattening"),
+            help: "Geometric flattening"
+        ) var flattening: Double?
+
+        @Option(
+            name: [.customLong("output"), .customShort("o")],
+            help: "Destination .aura file path"
+        ) var output: String?
+    }
+}
+
+extension AuraCLI.Pack: ParsableCommand {
+    static var configuration: CommandConfiguration {
+        .init(
+            commandName: "pack",
+            abstract: """
+            Assembles surface textures, physical parameters, and optional .atmo \
+            atmosphere intermediates into a .aura archive
+            """
+        )
+    }
+
+    mutating func run() throws {
+        if  self.manifest != nil, self.textures != nil {
+            throw ValidationError.init(
+                "Positional textures and --manifest are mutually exclusive"
+            )
+        }
+        if  self.manifest == nil, self.textures == nil {
+            throw ValidationError.init(
+                "Either positional textures or --manifest must be provided"
+            )
+        }
+
+        if  let manifestPathString: String = self.manifest {
+            try self.runManifestMode(manifestPathString: manifestPathString)
+        } else if let texturesPathString: String = self.textures {
+            try self.runSingleBodyMode(texturesPathString: texturesPathString)
+        }
+    }
+}
+
+extension AuraCLI.Pack {
+    private func runSingleBodyMode(texturesPathString: String) throws {
+        let texturesDir: FilePath = .init(texturesPathString)
+        let planetName: String = self.name ?? texturesDir.lastComponent?.string ?? "Planet"
+
+        let albedo: AuraArchive.Cubemap = try Self.loadCubemap(
+            from: texturesDir,
+            type: "albedo"
+        )!
+        let relief: AuraArchive.Cubemap? = try Self.loadCubemap(
+            from: texturesDir.appending("Relief"),
+            type: "relief"
+        )
+
+        var atmosphere: Atmosphere? = nil
+        if  let atmoString: String = self.atmosphere {
+            let atmoPath: FilePath = .init(atmoString)
+            guard (try? atmoPath.exists) == true else {
+                throw ValidationError.init(
+                    "Atmosphere intermediate not found at '\(atmoString)'"
+                )
+            }
+            do {
+                let ion: Ion = .init(bytes: try atmoPath.read()[...])
+                let archive: AtmosphereArchive = try ion.decode()
+                atmosphere = archive.atmosphere
+            } catch {
+                throw ValidationError.init(
+                    "Atmosphere intermediate not found at '\(atmoString)'"
+                )
+            }
+        }
+
+        guard let radius: Double = self.radius else {
+            throw ValidationError.init(
+                "Planetary radius in kilometers must be specified via --radius"
+            )
+        }
+
+        let spheroid: AuraArchive.Spheroid = .init(
+            radius: radius,
+            relief: self.reliefScale ?? 1.0,
+            tilt: self.tilt ?? 0.0,
+            flattening: self.flattening ?? 0.0,
+        )
+
+        let entry: AuraArchive.Body = .init(
+            name: planetName,
+            spheroid: spheroid,
+            albedo: albedo,
+            relief: relief,
+            atmosphere: atmosphere
+        )
+
+        let outPath: FilePath
+        if  let output: String = self.output {
+            outPath = .init(output)
+        } else {
+            let parentDir: FilePath = texturesDir.removingLastComponent()
+            outPath = parentDir.appending("\(planetName).aura")
+        }
+
+        let parent: FilePath = outPath.removingLastComponent()
+        if !parent.isEmpty {
+            try FilePath.Directory.init(path: parent).create()
+        }
+
+        let archive: AuraArchive = .init(bodies: [entry])
+        try archive.write(to: outPath)
+        print("Successfully packed '\(planetName)' into '\(outPath)'!")
+    }
+
+    private func runManifestMode(manifestPathString: String) throws {
+        let manifestPath: FilePath = .init(manifestPathString)
+        guard (try? manifestPath.exists) == true else {
+            throw ValidationError.init("Manifest file not found at '\(manifestPathString)'")
+        }
+
+        let manifest: PackagingManifest = try PackagingManifest.load(from: manifestPath)
+        var manifestDir: FilePath = manifestPath.removingLastComponent()
+        if  manifestDir.isEmpty {
+            manifestDir = "."
+        }
+
+        var entries: [AuraArchive.Body] = []
+        entries.reserveCapacity(manifest.bodies.count)
+
+        for body: PackagingManifest.Body in manifest.bodies {
+            let texturesPath: FilePath = Self.resolve(
+                pathString: body.textures,
+                relativeTo: manifestDir
+            )
+            let albedo: AuraArchive.Cubemap = try Self.loadCubemap(
+                from: texturesPath,
+                type: "albedo"
+            )!
+            let relief: AuraArchive.Cubemap? = try Self.loadCubemap(
+                from: texturesPath.appending("Relief"),
+                type: "relief"
+            )
+
+            var atmosphere: Atmosphere? = nil
+            if  let atmoRel: String = body.atmosphere {
+                let atmoPath: FilePath = Self.resolve(
+                    pathString: atmoRel,
+                    relativeTo: manifestDir
+                )
+                guard (try? atmoPath.exists) == true else {
+                    throw ValidationError.init(
+                        "Atmosphere intermediate not found at '\(atmoRel)'"
+                    )
+                }
+                do {
+                    let ion: Ion = .init(bytes: try atmoPath.read()[...])
+                    let archive: AtmosphereArchive = try ion.decode()
+                    atmosphere = archive.atmosphere
+                } catch {
+                    throw ValidationError.init(
+                        "Atmosphere intermediate not found at '\(atmoRel)'"
+                    )
+                }
+            }
+
+            let entry: AuraArchive.Body = .init(
+                name: body.name,
+                spheroid: body.spheroid,
+                albedo: albedo,
+                relief: relief,
+                atmosphere: atmosphere
+            )
+            entries.append(entry)
+        }
+
+        let outPath: FilePath = Self.resolve(
+            pathString: manifest.output,
+            relativeTo: manifestDir
+        )
+        let parent: FilePath = outPath.removingLastComponent()
+        if !parent.isEmpty {
+            try FilePath.Directory.init(path: parent).create()
+        }
+
+        let archive: AuraArchive = .init(bodies: entries)
+        try archive.write(to: outPath)
+        print("Successfully packed \(entries.count) bodies into '\(outPath)'!")
+    }
+
+    private static func loadCubemap(
+        from directory: FilePath,
+        type: String
+    ) throws -> AuraArchive.Cubemap? {
+        guard try directory.exists else {
+            if  type == "albedo" {
+                throw ValidationError.init("Texture directory not found: '\(directory)'")
+            }
+            return nil
+        }
+
+        let faceNames: [String] = [
+            "px.webp",
+            "nx.webp",
+            "py.webp",
+            "ny.webp",
+            "pz.webp",
+            "nz.webp"
+        ]
+        var missing: [String] = []
+        var faces: [String: [UInt8]] = [:]
+
+        for face: String in faceNames {
+            let facePath: FilePath = directory.appending(face)
+            if  let bytes: [UInt8] = try? facePath.read([UInt8].self) {
+                faces[face] = bytes
+            } else {
+                missing.append(face)
+            }
+        }
+
+        if !missing.isEmpty {
+            throw ValidationError.init(
+                """
+                Incomplete \(type) cubemap in '\(directory)': missing [\(
+                    missing.joined(separator: ", ")
+                )]
+                """
+            )
+        }
+
+        return .init(
+            px: faces["px.webp"]!,
+            nx: faces["nx.webp"]!,
+            py: faces["py.webp"]!,
+            ny: faces["ny.webp"]!,
+            pz: faces["pz.webp"]!,
+            nz: faces["nz.webp"]!
+        )
+    }
+
+    private static func resolve(pathString: String, relativeTo base: FilePath) -> FilePath {
+        let path: FilePath = .init(pathString)
+        if  path.isAbsolute {
+            return path
+        }
+        var combined: FilePath = base
+        for comp: FilePath.Component in path.components {
+            combined.append(comp)
+        }
+        combined.lexicallyNormalize()
+        return combined
+    }
+}

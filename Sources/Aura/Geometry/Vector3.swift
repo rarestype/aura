@@ -1,5 +1,7 @@
-struct Vector3<Scalar>: Hashable where Scalar: SIMDScalar {
-    var storage: SIMD3<Scalar>
+public import Ion
+
+@frozen @usableFromInline struct Vector3<Scalar>: Hashable where Scalar: SIMDScalar {
+    @usableFromInline var storage: SIMD3<Scalar>
 
     init(_ storage: SIMD3<Scalar>) {
         self.storage = storage
@@ -21,10 +23,10 @@ extension Vector3 {
     }
 }
 extension Vector3: CustomStringConvertible {
-    var description: String { "\(self.tuple)" }
+    @inlinable var description: String { "\(self.tuple)" }
 }
 extension Vector3 {
-    var x: Scalar {
+    @inlinable var x: Scalar {
         get {
             self.storage.x
         }
@@ -32,7 +34,7 @@ extension Vector3 {
             self.storage.x = x
         }
     }
-    var y: Scalar {
+    @inlinable var y: Scalar {
         get {
             self.storage.y
         }
@@ -40,7 +42,7 @@ extension Vector3 {
             self.storage.y = y
         }
     }
-    var z: Scalar {
+    @inlinable var z: Scalar {
         get {
             self.storage.z
         }
@@ -49,7 +51,7 @@ extension Vector3 {
         }
     }
 
-    var tuple: (Scalar, Scalar, Scalar) {
+    @inlinable var tuple: (Scalar, Scalar, Scalar) {
         (self.x, self.y, self.z)
     }
 
@@ -462,5 +464,23 @@ extension Vector3 where Scalar: FloatingPoint & ElementaryFunctions {
         let sin: Vector2<Scalar> = .init(.sin(ll.storage)),
         cos: Vector2<Scalar> = .init(.cos(ll.storage))
         self = .extend(.init(cos.y, sin.y) * sin.x, cos.x)
+    }
+}
+
+extension Vector3: IonEncodable, IonEncodableList where Scalar: IonEncodable {
+    @usableFromInline func encode(to ion: inout Ion.ListEncoder) {
+        ion[+] = self.x
+        ion[+] = self.y
+        ion[+] = self.z
+    }
+}
+
+extension Vector3: IonDecodable, IonDecodableList where Scalar: IonDecodable {
+    @usableFromInline init(ion: inout Ion.ListDecoder) throws {
+        self.init(
+            try ion[+].decode(to: Scalar.self),
+            try ion[+].decode(to: Scalar.self),
+            try ion[+].decode(to: Scalar.self)
+        )
     }
 }

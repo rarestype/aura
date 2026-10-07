@@ -6,6 +6,12 @@ import Glibc
 import Musl
 #endif
 
+extension Double {
+    func smoothstep(_ a: Double, _ b: Double) -> Double {
+        let x: Double = max(0, min((self - a) / (b - a), 1))
+        return x * x * (3 - 2 * x)
+    }
+}
 extension Double: ElementaryFunctions {
     static func sqrt(_ x: Self) -> Self {
         #if canImport(Darwin)

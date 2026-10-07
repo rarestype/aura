@@ -8,6 +8,7 @@ let package: Package = .init(
         .executable(name: "aura", targets: ["AuraCLI"]),
         .library(name: "Aura", targets: ["Aura"]),
         .library(name: "AuraDecoding", targets: ["AuraDecoding"]),
+        .library(name: "AuraEncoding", targets: ["AuraEncoding"]),
     ],
     dependencies: [
         .package(url: "https://github.com/ordo-one/dollup", from: "1.0.1"),
@@ -19,22 +20,32 @@ let package: Package = .init(
     ],
     targets: [
         .target(
-            name: "AuraDecoding"
+            name: "AuraDecoding",
+        ),
+        .target(
+            name: "AuraEncoding",
         ),
         .target(
             name: "Aura",
             dependencies: [
                 .target(name: "AuraDecoding"),
+                .target(name: "AuraEncoding"),
                 .product(name: "Ion", package: "swift-ion"),
-                .product(name: "IonText", package: "swift-ion"),
                 .product(name: "LZ77", package: "swift-png"),
-                .product(name: "SystemIO", package: "swift-io"),
+            ]
+        ),
+        .target(
+            name: "AuraTesting",
+            dependencies: [
+                .target(name: "Aura"),
             ]
         ),
         .executableTarget(
             name: "AuraCLI",
             dependencies: [
                 .target(name: "Aura"),
+                .product(name: "IonText", package: "swift-ion"),
+                .product(name: "SystemIO", package: "swift-io"),
                 .product(name: "System_ArgumentParser", package: "swift-io"),
             ]
         ),
@@ -42,6 +53,7 @@ let package: Package = .init(
             name: "AuraGoldenTests",
             dependencies: [
                 .target(name: "Aura"),
+                .target(name: "AuraTesting"),
                 .product(name: "CRC", package: "h"),
                 .product(name: "SystemIO", package: "swift-io"),
                 .product(name: "System_ArgumentParser", package: "swift-io"),
@@ -51,7 +63,7 @@ let package: Package = .init(
             name: "AuraTests",
             dependencies: [
                 .target(name: "Aura"),
-                .target(name: "AuraDecoding"),
+                .target(name: "AuraTesting"),
             ]
         ),
     ]
@@ -61,6 +73,9 @@ for target: Target in package.targets {
     {
         var settings: [SwiftSetting] = $0 ?? []
         settings.append(.enableUpcomingFeature("ExistentialAny"))
+        settings.append(.enableUpcomingFeature("MemberImportVisibility"))
+        settings.append(.enableUpcomingFeature("InternalImportsByDefault"))
+        settings.append(.enableExperimentalFeature("StrictConcurrency"))
         $0 = settings
     } (&target.swiftSettings)
 }

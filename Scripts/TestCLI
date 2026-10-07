@@ -1,0 +1,145 @@
+#!/bin/bash
+set -euo pipefail
+
+AURA_BIN="${AURA_BIN:-.build/release/aura}"
+if [ ! -x "$AURA_BIN" ]; then
+    echo "Executable not found at '$AURA_BIN', building..."
+    swift build -c release --product aura
+fi
+
+TMP_DIR=$(mktemp -d "/tmp/AuraCLITest_XXXXXX")
+trap 'rm -rf "$TMP_DIR"' EXIT
+
+echo "=== Running Aura CLI Integration Tests ==="
+echo "Using binary: $AURA_BIN"
+echo "Working directory: $TMP_DIR"
+
+# 1. Setup textures
+mkdir -p "$TMP_DIR/Public/Earth/Relief"
+mkdir -p "$TMP_DIR/Public/Moon"
+mkdir -p "$TMP_DIR/Atmospheres"
+
+# Write dummy WebP bytes (RIFF....WEBPVP8 )
+DUMMY_WEBP_FILE="$TMP_DIR/dummy.webp"
+printf '\x52\x49\x46\x46\x0c\x00\x00\x00\x57\x45\x42\x50\x56\x50\x38\x20\x00\x00\x00\x00' > "$DUMMY_WEBP_FILE"
+for face in px nx py ny pz nz; do
+    cp "$DUMMY_WEBP_FILE" "$TMP_DIR/Public/Earth/$face.webp"
+    cp "$DUMMY_WEBP_FILE" "$TMP_DIR/Public/Earth/Relief/$face.webp"
+    cp "$DUMMY_WEBP_FILE" "$TMP_DIR/Public/Moon/$face.webp"
+done
+
+# 2. Write Earth atmosphere config
+cat << 'EOF' > "$TMP_DIR/Atmospheres/Earth.ion"
+{
+    name: "Earth",
+    radius_bottom: 6360000.0e0,
+    radius_top: 6420000.0e0,
+    sun_angular_radius: 0.004675e0,
+    max_sun_zenith_angle: 102.0e0,
+    rayleigh_scale_height: 8000.0e0,
+    rayleigh_scattering: [5.802339e-6, 1.355776e-5, 3.310001e-5],
+    mie_scale_height: 1200.0e0,
+    mie_scattering: [3.996e-6, 3.996e-6, 3.996e-6],
+    mie_extinction: [4.44e-6, 4.44e-6, 4.44e-6],
+    mie_albedo: 0.9e0,
+    mie_g: 0.8e0,
+    solar_irradiance: [1.49265e0, 1.850945e0, 1.762255e0],
+    ground_albedo: [0.1e0, 0.1e0, 0.1e0]
+}
+EOF
+
+# 3. Test 'aura atmosphere' command
+echo "--> Testing 'aura bake'..."
+"$AURA_BIN" bake "$TMP_DIR/Atmospheres/Earth.ion" --detail 1 --output "$TMP_DIR/Earth.atmo"
+
+if [ ! -s "$TMP_DIR/Earth.atmo" ]; then
+    echo "Error: Atmosphere intermediate not generated or empty." >&2
+    exit 1
+fi
+echo "    Generated Earth.atmo successfully."
+
+# 4. Test 'aura pack' (single body)
+echo "--> Testing 'aura pack' (single body mode)..."
+"$AURA_BIN" pack "$TMP_DIR/Public/Earth" \
+    --name "Earth" \
+    --radius 6371.0 \
+    --tilt 0.4084 \
+    --flattening 0.00335 \
+    --relief-scale 1.0 \
+    --atmosphere "$TMP_DIR/Earth.atmo" \
+    --output "$TMP_DIR/Earth.aura"
+
+if [ ! -s "$TMP_DIR/Earth.aura" ]; then
+    echo "Error: Single body archive not generated or empty." >&2
+    exit 1
+fi
+echo "    Generated Earth.aura successfully."
+
+# 5. Test 'aura pack' (manifest mode)
+echo "--> Testing 'aura pack' (manifest mode)..."
+cat << EOF > "$TMP_DIR/manifest.ion"
+{
+    output: "Earth-Moon.aura",
+    bodies: [
+        {
+            name: "Earth",
+            textures: "Public/Earth",
+            spheroid: {
+                radius: 6371.0e0,
+                relief: 1.0e0,
+                tilt: 0.4084e0,
+                flattening: 0.00335e0,
+            },
+            atmosphere: "Earth.atmo",
+        },
+        {
+            name: "The Moon",
+            textures: "Public/Moon",
+            spheroid: {
+                radius: 1737.4e0,
+                relief: 1.5e0,
+                tilt: 0.0269e0,
+                flattening: 0.0e0,
+            },
+        }
+    ]
+}
+EOF
+
+"$AURA_BIN" pack --manifest "$TMP_DIR/manifest.ion"
+
+if [ ! -s "$TMP_DIR/Earth-Moon.aura" ]; then
+    echo "Error: Multi-body manifest archive not generated or empty." >&2
+    exit 1
+fi
+echo "    Generated Earth-Moon.aura successfully."
+
+# 6. Test CLI validation & error handling
+echo "--> Testing validation and error handling..."
+
+# Mutual exclusion
+if "$AURA_BIN" pack "$TMP_DIR/Public/Earth" --manifest "$TMP_DIR/manifest.ion" 2>/dev/null; then
+    echo "Error: Expected mutual exclusion between positional textures and --manifest to fail." >&2
+    exit 1
+fi
+
+# Missing arguments
+if "$AURA_BIN" pack 2>/dev/null; then
+    echo "Error: Expected pack with no arguments to fail." >&2
+    exit 1
+fi
+
+# Missing texture face
+rm -f "$TMP_DIR/Public/Earth/px.webp"
+if "$AURA_BIN" pack "$TMP_DIR/Public/Earth" --radius 6371.0 2>/dev/null; then
+    echo "Error: Expected pack with missing albedo face to fail." >&2
+    exit 1
+fi
+
+# Missing atmosphere intermediate file
+if "$AURA_BIN" pack "$TMP_DIR/Public/Moon" --radius 1737.4 --atmosphere "$TMP_DIR/nonexistent.atmo" 2>/dev/null; then
+    echo "Error: Expected pack with nonexistent atmosphere file to fail." >&2
+    exit 1
+fi
+
+echo "💖 CLI integration tests passed!"

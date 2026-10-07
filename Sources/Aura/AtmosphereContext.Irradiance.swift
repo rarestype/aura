@@ -1,20 +1,22 @@
-struct IrradianceTable: AtmosphereTable, Sendable {
-    let atmosphere: Atmosphere
-    var buffer: [Vector3<Double>]
+extension AtmosphereContext {
+    struct Irradiance: Table, Sendable {
+        let context: AtmosphereContext
+        var buffer: [Vector3<Double>]
 
-    var size: Vector2<Int> {
-        self.atmosphere.resolution.irradiance
+        var size: Vector2<Int> {
+            self.context.resolution.irradiance
+        }
     }
 }
 
-extension IrradianceTable {
+extension AtmosphereContext.Irradiance {
     subscript(r r: Double, μs μs: Double) -> Vector3<Double> {
-        let t: Vector2<Double> = self.atmosphere.irradianceTextureCoordinate(r: r, μs: μs)
+        let t: Vector2<Double> = self.context.irradianceTextureCoordinate(r: r, μs: μs)
         return self[t]
     }
 }
 
-extension IrradianceTable: CustomStringConvertible {
+extension AtmosphereContext.Irradiance: CustomStringConvertible {
     var description: String {
         """
         Irradiance table [\(self.size.x), \(self.size.y)]

@@ -1,63 +1,39 @@
-struct TransmittanceTable: AtmosphereTable, Sendable {
-    let atmosphere: Atmosphere
-    var buffer: [Vector3<Double>]
+extension AtmosphereContext {
+    struct Transmittance: Table, Sendable {
+        let context: AtmosphereContext
+        var buffer: [Vector3<Double>]
 
-    var size: Vector2<Int> {
-        self.atmosphere.resolution.transmittance
+        var size: Vector2<Int> {
+            self.context.resolution.transmittance
+        }
     }
+}
 
+extension AtmosphereContext.Transmittance {
     // Transmittance to top
     var top: Top {
         .init(table: self)
-    }
-
-    struct Top {
-        let table: TransmittanceTable
-
-        subscript(r r: Double, μ μ: Double) -> Vector3<Double> {
-            self.table.atmosphere.assert(r: r, μ: μ)
-            let t: Vector2<Double> = self.table.atmosphere.transmittanceTextureCoordinate(
-                r: r,
-                μ: μ
-            )
-            return self.table[t]
-        }
     }
 
     // Transmittance to sun
     var sun: Sun {
         .init(table: self)
     }
-
-    struct Sun {
-        let table: TransmittanceTable
-
-        subscript(r r: Double, μs μs: Double) -> Vector3<Double> {
-            let α: Double = self.table.atmosphere.radius.sun
-            let sin: Double = self.table.atmosphere.radius.bottom / r,
-            cos: Double = -.sqrt(max(0, 1 - sin * sin))
-            return self.table.top[r: r, μ: μs] * Atmosphere.smoothstep(
-                -sin * α,
-                sin * α,
-                t: μs - cos
-            )
-        }
-    }
 }
 
 // Single scattering
-extension TransmittanceTable {
+extension AtmosphereContext.Transmittance {
     subscript(
         r r: Double,
         μ μ: Double,
         d d: Double,
         intersectsGround intersectsGround: Bool
     ) -> Vector3<Double> {
-        self.atmosphere.assert(r: r, μ: μ)
+        self.context.assert(r: r, μ: μ)
         Swift.assert(d >= 0)
 
         let q: Double = d * d + 2 * r * μ * d + r * r
-        let rd: Double = self.atmosphere.clamp(r: .sqrt(q))
+        let rd: Double = self.context.clamp(r: .sqrt(q))
         let μd: Double = max(-1, min((r * μ + d) / rd, 1))
         if intersectsGround {
             let transmittance: Vector3<Double> = self.top[r: rd, μ: -μd] / self.top[r: r, μ: -μ]
@@ -77,16 +53,16 @@ extension TransmittanceTable {
         intersectsGround: Bool
     ) -> (rayleigh: Vector3<Double>, mie: Vector3<Double>) {
         let q: Double = d * d + 2 * r * μ * d + r * r
-        let rd: Double = self.atmosphere.clamp(r: .sqrt(q))
+        let rd: Double = self.context.clamp(r: .sqrt(q))
         let μsd: Double = max(-1, min((r * μs + d * ν) / rd, 1))
         let transmittance: Vector3<Double> =
         self[r: r, μ: μ, d: d, intersectsGround: intersectsGround] * self.sun[r: rd, μs: μsd]
         return (
-            transmittance * self.atmosphere.rayleigh.density[
-                altitude: rd - self.atmosphere.radius.bottom
+            transmittance * self.context.rayleigh.density[
+                altitude: rd - self.context.radius.bottom
             ],
-            transmittance * self.atmosphere.mie.density[
-                altitude: rd - self.atmosphere.radius.bottom
+            transmittance * self.context.mie.density[
+                altitude: rd - self.context.radius.bottom
             ]
         )
     }
@@ -100,9 +76,10 @@ extension TransmittanceTable {
         intersectsGround: Bool,
         samples: Int = 50
     ) -> (rayleigh: Vector3<Double>, mie: Vector3<Double>) {
-        self.atmosphere.assert(r: r, μ: μ)
-        Atmosphere.assert(μs: μs, ν: ν)
-        let distance: Double = self.atmosphere.distanceToBoundary(
+        self.context.assert(r: r, μ: μ)
+        AtmosphereContext.assert(μs: μs, ν: ν)
+
+        let distance: Double = self.context.distanceToBoundary(
             r: r,
             μ: μ,
             intersectsGround: intersectsGround
@@ -123,10 +100,10 @@ extension TransmittanceTable {
             sum.mie      += mie * w
         }
 
-        let irradiance: Vector3<Double> = self.atmosphere.irradiance
+        let irradiance: Vector3<Double> = self.context.irradiance
         return (
-            sum.rayleigh * Δx * irradiance * self.atmosphere.rayleigh.scattering,
-            sum.mie      * Δx * irradiance * self.atmosphere.mie.scattering
+            sum.rayleigh * Δx * irradiance * self.context.rayleigh.scattering,
+            sum.mie      * Δx * irradiance * self.context.mie.scattering
         )
     }
 
@@ -141,7 +118,7 @@ extension TransmittanceTable {
             ν: Double,
             intersectsGround: Bool
         ) =
-        self.atmosphere.scatteringTextureParameter(texel: texel)
+        self.context.scatteringTextureParameter(texel: texel)
         return self.singleScattering(
             r: r,
             μ: μ,
@@ -152,9 +129,9 @@ extension TransmittanceTable {
     }
 
     func directIrradiance(r: Double, μs: Double) -> Vector3<Double> {
-        self.atmosphere.assert(r: r, μ: μs)
+        self.context.assert(r: r, μ: μs)
 
-        let αs: Double = self.atmosphere.radius.sun
+        let αs: Double = self.context.radius.sun
         let average: Double
         if μs <= -αs {
             average = 0
@@ -165,19 +142,19 @@ extension TransmittanceTable {
             average = μs
         }
 
-        return average * self.atmosphere.irradiance * self.top[r: r, μ: μs]
+        return average * self.context.irradiance * self.top[r: r, μ: μs]
     }
 
     func directIrradiance(texel: Vector2<Double>) -> Vector3<Double> {
-        let size: Vector2<Double> = .cast(self.atmosphere.resolution.irradiance)
-        let (r, μs): (r: Double, μs: Double) = self.atmosphere.irradianceTextureParameter(
+        let size: Vector2<Double> = .cast(self.context.resolution.irradiance)
+        let (r, μs): (r: Double, μs: Double) = self.context.irradianceTextureParameter(
             texel / size
         )
         return self.directIrradiance(r: r, μs: μs)
     }
 }
 
-extension TransmittanceTable: CustomStringConvertible {
+extension AtmosphereContext.Transmittance: CustomStringConvertible {
     var description: String {
         """
         Transmittance table [\(self.size.x), \(self.size.y)]
