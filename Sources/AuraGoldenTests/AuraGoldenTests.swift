@@ -7,9 +7,9 @@ import SystemIO
 import SystemPackage
 
 @main struct AuraGoldenTests {
-    static var goldenTransmittanceCRC32: UInt32 { 0xAB53BAD0 }
-    static var goldenIrradianceCRC32: UInt32 { 0xB193C82B }
-    static var goldenScatteringCRC32: UInt32 { 0xA71A2E72 }
+    static var goldenCRC32: (transmittance: UInt32, irradiance: UInt32, scattering: UInt32) {
+        (0xAB53BAD0, 0xB193C82B, 0xA71A2E72)
+    }
 
     @Option(
         name: [.customLong("threads"), .customShort("j")],
@@ -30,8 +30,7 @@ extension AuraGoldenTests: AsyncParsableCommand {
         let clock: ContinuousClock = .init()
         let start: ContinuousClock.Instant = clock.now
         let archive: AtmosphereArchive = await .bake(.earth, detail: 3, workers: self.threads)
-        let elapsed: Duration = start.duration(to: clock.now)
-        print("   Detail 3 precomputation finished in \(elapsed)!")
+        print("   Detail 3 precomputation finished in \(start.duration(to: clock.now))!")
 
         print("2. Verifying physical parameters...")
         let params: AtmosphereParameters = archive.atmosphere.parameters
@@ -45,88 +44,86 @@ extension AuraGoldenTests: AsyncParsableCommand {
 
         print("3. Extracting tables and checking CRC32 against golden reference...")
 
-        // Transmittance
         let transmittance: Atmosphere.Table = archive.atmosphere.transmittance
         guard transmittance.x == 256, transmittance.y == 64 else {
             fatalError("Verification failed: Unexpected transmittance resolution!")
         }
-        let transTable: [SIMD4<Float>] = try transmittance.decompress()
-        let transCRC: UInt32 = transTable.withUnsafeBytes { raw in
-            CRC32.init(hashing: raw).checksum
+        let transmittanceData: [SIMD4<Float>] = try transmittance.decompress()
+        let transmittanceCRC: UInt32 = transmittanceData.withUnsafeBytes {
+            CRC32.init(hashing: $0).checksum
         }
         print(
             """
                Transmittance CRC32: 0x\(
-                String(transCRC, radix: 16, uppercase: true)
+                String(transmittanceCRC, radix: 16, uppercase: true)
             ) [expected: 0x\(
-                String(Self.goldenTransmittanceCRC32, radix: 16, uppercase: true)
+                String(Self.goldenCRC32.transmittance, radix: 16, uppercase: true)
             )]
             """
         )
-        guard transCRC == Self.goldenTransmittanceCRC32 else {
+        guard transmittanceCRC == Self.goldenCRC32.transmittance else {
             fatalError("Verification failed: Transmittance CRC32 mismatch!")
         }
 
-        // Irradiance
         let irradiance: Atmosphere.Table = archive.atmosphere.irradiance
         guard irradiance.x == 64, irradiance.y == 16 else {
             fatalError("Verification failed: Unexpected irradiance resolution!")
         }
-        let irradTable: [SIMD4<Float>] = try irradiance.decompress()
-        let irradCRC: UInt32 = irradTable.withUnsafeBytes { raw in
-            CRC32.init(hashing: raw).checksum
+        let irradianceData: [SIMD4<Float>] = try irradiance.decompress()
+        let irradianceCRC: UInt32 = irradianceData.withUnsafeBytes {
+            CRC32.init(hashing: $0).checksum
         }
         print(
             """
                Irradiance    CRC32: 0x\(
-                String(irradCRC, radix: 16, uppercase: true)
+                String(irradianceCRC, radix: 16, uppercase: true)
             ) [expected: 0x\(
-                String(Self.goldenIrradianceCRC32, radix: 16, uppercase: true)
+                String(Self.goldenCRC32.irradiance, radix: 16, uppercase: true)
             )]
             """
         )
-        guard irradCRC == Self.goldenIrradianceCRC32 else {
+        guard irradianceCRC == Self.goldenCRC32.irradiance else {
             fatalError("Verification failed: Irradiance CRC32 mismatch!")
         }
 
-        // Scattering
         let scattering: Atmosphere.Table = archive.atmosphere.scattering
         guard scattering.x == 256, scattering.y == 128, scattering.z == 32 else {
             fatalError("Verification failed: Unexpected scattering resolution!")
         }
-        let scatTable: [SIMD4<Float>] = try scattering.decompress()
-        let scatCRC: UInt32 = scatTable.withUnsafeBytes { raw in
-            CRC32.init(hashing: raw).checksum
+        let scatteringData: [SIMD4<Float>] = try scattering.decompress()
+        let scatteringCRC: UInt32 = scatteringData.withUnsafeBytes {
+            CRC32.init(hashing: $0).checksum
         }
         print(
             """
                Scattering    CRC32: 0x\(
-                String(scatCRC, radix: 16, uppercase: true)
+                String(scatteringCRC, radix: 16, uppercase: true)
             ) [expected: 0x\(
-                String(Self.goldenScatteringCRC32, radix: 16, uppercase: true)
+                String(Self.goldenCRC32.scattering, radix: 16, uppercase: true)
             )]
             """
         )
-        guard scatCRC == Self.goldenScatteringCRC32 else {
+        guard scatteringCRC == Self.goldenCRC32.scattering else {
             fatalError("Verification failed: Scattering CRC32 mismatch!")
         }
 
-        // Optional check against external raw golden files if explicitly provided
-        if let goldenDirEnv: String = Environment["GOLDEN_TABLES_DIR"] {
-            let goldenDir: FilePath = .init(goldenDirEnv)
-            if (try? goldenDir.exists) == true {
-                print("   Comparing float-by-float against golden files in ‘\(goldenDir)’...")
+        if let goldenDir: String = Environment["GOLDEN_TABLES_DIR"] {
+            let goldenPath: FilePath = .init(goldenDir)
+            if (try? goldenPath.exists) == true {
+                print("   Comparing float-by-float against golden files in '\(goldenPath)'...")
                 try Self.verifyAgainstExternalGolden(
-                    dir: goldenDir,
-                    transmittance: transTable,
-                    irradiance: irradTable,
-                    scattering: scatTable
+                    dir: goldenPath,
+                    transmittance: transmittanceData,
+                    irradiance: irradianceData,
+                    scattering: scatteringData
                 )
                 print("   Bit-for-bit exact match across all 4,263,936 floating-point values!")
             } else {
                 print(
                     """
-                       GOLDEN_TABLES_DIR specified but ‘\(goldenDir)’ does not exist (skipping).
+                       GOLDEN_TABLES_DIR specified but '\(
+                        goldenPath
+                    )' does not exist (skipping).
                     """
                 )
             }
@@ -134,20 +131,11 @@ extension AuraGoldenTests: AsyncParsableCommand {
 
         print("4. Verifying archive serialization and deserialization roundtrip...")
         let ion: Ion = .encode(atomic: archive)
-        let deserialized: AtmosphereArchive = try .deserialize(from: ion.bytes)
-        let reextractedScattering: [
-            SIMD4<Float>
-        ] = try deserialized.atmosphere.scattering.decompress()
-        guard reextractedScattering == scatTable else {
+        let deserialized: AtmosphereArchive = try ion.decode()
+        guard try deserialized.atmosphere.scattering.decompress() == scatteringData else {
             fatalError("Verification failed: Table roundtrip mismatch!")
         }
-        print(
-            """
-               Archive serialized (\(
-                ion.bytes.count
-            ) bytes) and deserialized successfully!
-            """
-        )
+        print("   Archive serialized (\(ion.bytes.count) bytes) and deserialized successfully!")
 
         print("💖 output matches golden reference!")
     }
@@ -158,85 +146,46 @@ extension AuraGoldenTests: AsyncParsableCommand {
         irradiance: [SIMD4<Float>],
         scattering: [SIMD4<Float>]
     ) throws {
-        // Transmittance
-        let transPath: FilePath = dir.appending("earth-transmittance-3x.float32")
-        if let bytes: [UInt8] = try? transPath.read([UInt8].self),
-            bytes.count >= 16 + transmittance.count * 16 {
-            let beFloats: [Float] = bytes[
-                16 ..< 16 + transmittance.count * 16
-            ].withUnsafeBytes { raw in
-                let u32s: UnsafeBufferPointer<UInt32> = raw.bindMemory(to: UInt32.self)
-                return u32s.map { .init(bitPattern: UInt32(bigEndian: $0)) }
-            }
-            transmittance.withUnsafeBytes { raw in
-                let leFloats: UnsafeBufferPointer<Float> = raw.bindMemory(to: Float.self)
-                for i: Int in 0 ..< beFloats.count {
-                    if beFloats[i] != leFloats[i] {
-                        fatalError(
-                            """
-                            Transmittance float mismatch at index \(i): golden=\(
-                                beFloats[i]
-                            ) vs baked=\(
-                                leFloats[i]
-                            )
-                            """
-                        )
+        let files: [(name: String, path: FilePath, data: [SIMD4<Float>], offset: Int)] = [
+            (
+                "Transmittance",
+                dir.appending("earth-transmittance-3x.float32"),
+                transmittance,
+                16
+            ),
+            ("Irradiance", dir.appending("earth-irradiance-3x.float32"), irradiance, 16),
+            (
+                "Scattering",
+                dir.appending("earth-scattering-combined-3x.float32"),
+                scattering,
+                20
+            )
+        ]
+
+        for file: (name: String, path: FilePath, data: [SIMD4<Float>], offset: Int) in files {
+            if  let bytes: [UInt8] = try? file.path.read([UInt8].self),
+                    bytes.count >= file.offset + file.data.count * 16 {
+                let golden: [Float] = bytes[
+                    file.offset ..< file.offset + file.data.count * 16
+                ].withUnsafeBytes {
+                    $0.bindMemory(to: UInt32.self).map {
+                        .init(bitPattern: UInt32.init(bigEndian: $0))
                     }
                 }
-            }
-        }
-
-        // Irradiance
-        let irradPath: FilePath = dir.appending("earth-irradiance-3x.float32")
-        if let bytes: [UInt8] = try? irradPath.read([UInt8].self),
-            bytes.count >= 16 + irradiance.count * 16 {
-            let beFloats: [Float] = bytes[
-                16 ..< 16 + irradiance.count * 16
-            ].withUnsafeBytes { raw in
-                let u32s: UnsafeBufferPointer<UInt32> = raw.bindMemory(to: UInt32.self)
-                return u32s.map { .init(bitPattern: UInt32(bigEndian: $0)) }
-            }
-            irradiance.withUnsafeBytes { raw in
-                let leFloats: UnsafeBufferPointer<Float> = raw.bindMemory(to: Float.self)
-                for i: Int in 0 ..< beFloats.count {
-                    if beFloats[i] != leFloats[i] {
-                        fatalError(
-                            """
-                            Irradiance float mismatch at index \(i): golden=\(
-                                beFloats[i]
-                            ) vs baked=\(
-                                leFloats[i]
+                file.data.withUnsafeBytes {
+                    let baked: UnsafeBufferPointer<Float> = $0.bindMemory(to: Float.self)
+                    for i: Int in 0 ..< golden.count {
+                        if  golden[i] != baked[i] {
+                            fatalError(
+                                """
+                                \(file.name) float mismatch at index \(i): golden=\(
+                                    golden[i]
+                                ) vs baked=\(
+                                    baked[i]
+                                )
+                                """
                             )
-                            """
-                        )
-                    }
-                }
-            }
-        }
-
-        // Scattering
-        let scatPath: FilePath = dir.appending("earth-scattering-combined-3x.float32")
-        if let bytes: [UInt8] = try? scatPath.read([UInt8].self),
-            bytes.count >= 20 + scattering.count * 16 {
-            let beFloats: [Float] = bytes[
-                20 ..< 20 + scattering.count * 16
-            ].withUnsafeBytes { raw in
-                let u32s: UnsafeBufferPointer<UInt32> = raw.bindMemory(to: UInt32.self)
-                return u32s.map { .init(bitPattern: UInt32(bigEndian: $0)) }
-            }
-            scattering.withUnsafeBytes { raw in
-                let leFloats: UnsafeBufferPointer<Float> = raw.bindMemory(to: Float.self)
-                for i: Int in 0 ..< beFloats.count {
-                    if beFloats[i] != leFloats[i] {
-                        fatalError(
-                            """
-                            Scattering float mismatch at index \(i): golden=\(
-                                beFloats[i]
-                            ) vs baked=\(
-                                leFloats[i]
-                            )
-                            """
-                        )
+                        }
                     }
                 }
             }

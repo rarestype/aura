@@ -1,611 +1,79 @@
 # Planetary appearance packaging specification
 
-This specification defines the architecture, file formats, CLI interface, and schemas for Aura 2.0 planetary appearance assets.
+This specification defines the architecture and file formats for Aura 2.0 planetary appearance assets.
 
 ---
 
-## 1. Overview and objectives
+## 1. Overview
 
-An `.aura` file is an uncompressed Amazon Ion binary archive (`IonABI`) that provides all visual and physical parameters required by the WebGL renderer to display one or more celestial bodies.
+An `.aura` file is an uncompressed Amazon Ion binary archive that provides all visual and physical parameters required by the WebGL renderer to display one or more celestial bodies.
 
-### Primary goals
-
-1. **Atomic single-request loading:**
-   Collapses up to 13 separate HTTP requests per body (6 albedo faces + 6 relief normal faces + 1 atmosphere table file) into a **single network fetch**.
-2. **Multi-body bundling:**
-   Supports packing multiple coupled celestial bodies into a single archive (for example, packaging Earth and the Moon together, or Jupiter and its Galilean satellites). When the client navigates to a planetary system, visual assets for both the primary body and its major satellites are retrieved in a single request.
-3. **Format standardization:**
-   Standardizes exclusively on **WebP** for all surface texture faces (`px.webp`, `nx.webp`, `py.webp`, `ny.webp`, `pz.webp`, `nz.webp`).
-4. **Targeted compression without whole-archive Gzip:**
-   WebP images are already entropy-compressed; running Gzip over them yields essentially 0% compression while wasting CPU cycles on both build machines and client devices. Instead, the `.aura` archive itself is an **uncompressed binary Ion structure**. Compression is applied **only to the atmosphere tables** (which contain raw `Float32` arrays that compress by 80–90%).
-5. **Direct JavaScript / WebGL decoding without WebAssembly bottleneck:**
-   JavaScript/TypeScript directly parses the Ion archive using `ion-js` and feeds the WebP byte blobs straight into browser-native, off-thread `createImageBitmap(blob)`. Texture bytes never touch WebAssembly memory. WebAssembly is only invoked for specialized mathematical reconstruction (such as atmospheric table deshuffling).
-6. **Decoupled build pipeline:**
-   Separates heavy numerical physics computations (atmospheric scattering simulation) from asset packaging (texture bundling) via a **build intermediate (`.atmo`)**, enabling visual texture iteration times under 50 milliseconds.
+The format pursues six primary goals. First, it collapses up to 13 separate HTTP requests per body (six albedo faces, six relief normal faces, and one atmosphere table file) into a single network fetch. Second, it supports packing multiple coupled celestial bodies into a single archive, such as Earth and Moon together. Third, it standardizes exclusively on WebP for all surface texture faces. Fourth, because WebP images are already entropy-compressed, the `.aura` archive itself remains uncompressed; compression is applied only to atmosphere tables, which contain raw `Float32` arrays that compress by 80–90%. Fifth, JavaScript directly parses the Ion archive using `ion-js` and feeds WebP byte blobs to browser-native `createImageBitmap(blob)`, so texture bytes never touch WebAssembly memory. Sixth, the format separates heavy numerical physics computations from asset packaging via a build intermediate (`.atmo`), enabling visual texture iteration times under 50 milliseconds.
 
 ---
 
 ## 2. Units and coordinate systems
 
-The system strictly delineates between astronomical simulation units and atmospheric radiative transfer units:
+The system strictly delineates between astronomical simulation units and atmospheric radiative transfer units.
 
-| Domain | Parameter | Unit | Notes |
-| :--- | :--- | :--- | :--- |
-| **Atmosphere subsystem** | `radius_bottom`, `radius_top` | **Meters** ($\text{m}$) | Matches Bruneton (2017) radiative transfer equations (e.g. `6360000.0e0` for Earth). |
-| | Scale heights (`rayleigh_scale_height`, `mie_scale_height`) | **Meters** ($\text{m}$) | e.g. `8000.0e0` for Earth Rayleigh, `1200.0e0` for Mie. |
-| | Scattering coefficients (`rayleigh_scattering`, `mie_scattering`) | $\text{m}^{-1}$ | Volumetric scattering coefficients. |
-| | Solar irradiance (`sun_irradiance`) | $\text{W} / \text{m}^2$ | Solar spectral irradiance at top of atmosphere. |
-| **Planetary geometry** | Body radius (`radius`) | **Kilometers** ($\text{km}$) | Standard astronomical catalog convention (e.g. `6371.0e0` for Earth, `1737.4e0` for the Moon). |
-| | Axial tilt (`tilt`) | **Radians** | Angle between rotation axis and orbital plane normal. |
-| | Flattening (`flattening`) | **Dimensionless** | Geometric oblateness: $(a - b) / a$. |
-| | Relief elevation scale (`relief_scale`) | **Dimensionless** | Normal map height multiplier (default: `1.0`). |
+Atmosphere subsystem parameters use meters for distances (matching Bruneton 2017 radiative transfer equations), inverse meters for volumetric scattering coefficients, and watts per square meter for solar irradiance. Planetary geometry parameters use kilometers for body radius (standard astronomical catalog convention), radians for axial tilt, and dimensionless ratios for flattening and relief elevation scale.
 
-### Coordinate conversions in the client
-
-In the WebGL renderer (`ParametricSpheroid.ts`):
-1. Astronomical radius in kilometers is converted to scene Astronomical Units:
-   $$\text{equatorialRadius} = \frac{\text{radius}_{\text{km}}}{149597870.7}$$
-2. The outer radius of the atmosphere rendering envelope is computed as a dimensionless ratio against the base radius:
-   $$\text{atmosphereTopRadius} = \text{equatorialRadius} \times \left(\frac{\text{radius\_top}}{\text{radius\_bottom}}\right)$$
-   Because $\text{radius\_top}$ and $\text{radius\_bottom}$ are both in meters, their units cancel cleanly.
+In the WebGL renderer, astronomical radius in kilometers is converted to scene Astronomical Units by dividing by 149597870.7. The outer radius of the atmosphere rendering envelope is computed as `equatorialRadius × (radius_top / radius_bottom)`. Because both `radius_top` and `radius_bottom` are in meters, their units cancel cleanly.
 
 ---
 
 ## 3. Decoupled build pipeline
 
-Atmospheric scattering simulation requires solving Bruneton’s radiative transfer integral equations, which is compute-intensive. Conversely, texture packaging is purely I/O and Ion serialization.
+Atmospheric scattering simulation requires solving Bruneton's radiative transfer integral equations, which is compute-intensive. Texture packaging, by contrast, is purely I/O and Ion serialization.
 
-To preserve sub-second iteration during art and shader development, the pipeline introduces a **build intermediate** for atmospheric scattering tables.
-
-```
-[World/Atmospheres/<Planet>.ion]
-               │
-               ▼  (aura atmosphere: slow numerical solve, run on config changes)
-[.build/atmospheres/<Planet>.atmo] (intermediate binary table cache)
-               │
-               │  ◄── [Public/<Planet>/*.webp] (6 albedo faces)
-               │  ◄── [Public/<Planet>/Relief/*.webp] (6 optional relief faces)
-               ▼  (aura pack: fast I/O assembly, <50 ms)
-[Public/<Planet>.aura] (final web-ready archive)
-```
-
-* **When texture art changes:** The developer re-runs `aura pack`, which bundles the updated WebP images with the cached `.atmo` intermediate in tens of milliseconds.
-* **When atmosphere parameters change:** The developer re-runs `aura atmosphere` to regenerate the `.atmo` intermediate.
-* **Airless bodies:** Bodies without atmospheres (such as the Moon or Mercury) bypass the atmospheric solver entirely and only run `aura pack`.
+To preserve sub-second iteration during art and shader development, the pipeline introduces a build intermediate for atmospheric scattering tables. The `aura bake` command performs the slow numerical solve and outputs `.atmo` files. The `aura pack` command then bundles these cached intermediates with WebP textures in tens of milliseconds. When texture art changes, developers re-run `aura pack`. When atmosphere parameters change, developers re-run `aura bake`. Bodies without atmospheres bypass the atmospheric solver entirely and only run `aura pack`.
 
 ---
 
-## 4. Intermediate format: `.atmo`
+## 4. File formats
 
-The `.atmo` intermediate file is an **uncompressed binary Amazon Ion structure** (`IonABI`) produced by `aura atmosphere`. It serializes an `AtmosphereArchive` file container holding an `Atmosphere` for a single celestial body.
+The `.atmo` file is an uncompressed binary Amazon Ion structure produced by `aura bake`. It contains a single `Atmosphere` with physical parameters and three lookup tables. Each table's `bytes` field contains Deflate-compressed, byte-shuffled `Float32` data. The compression pipeline applies PNG Up filtering (delta encoding along the Y axis within each Z slice), then byte plane shuffling (transposing from `[volume][16 bytes]` to `[16 planes][volume]`), then Deflate compression via the LZ77 module from the swift-png package. Decompression reverses this sequence: inflate, unshuffle, unfilter. See `TableEncoder.swift` and `TableDecoder.swift` for implementation details.
 
-### `.atmo` Ion schema
-
-```ion
-$ion_1_0
-{
-    version: 1,
-    name: "Earth",
-    atmosphere: {
-        parameters: {
-            radius_bottom: 6360000.0e0,
-            radius_top: 6420000.0e0,
-            radius_sun: 696340000.0e0,
-            mu_s_min: -0.2079117e0,
-            rayleigh_scattering: [5.802339e-6, 1.355776e-5, 3.310001e-5],
-            mie_scattering: [3.996e-6, 3.996e-6, 3.996e-6],
-            mie_g: 0.8e0,
-            resolution_transmittance: [256, 64],
-            resolution_scattering4_R: 32,
-            resolution_scattering4_M: 8,
-            resolution_scattering4_MS: 128,
-            resolution_scattering4_N: 32,
-            resolution_irradiance: [64, 16],
-            irradiance: [1.474e0, 1.697e0, 1.778e0]
-        },
-        // Individual table buffers are byte-shuffled and Deflate-compressed Float32 blobs
-        transmittance: {
-            x: 256,
-            y: 64,
-            bytes: {{ ...deflated Float32 blob... }}
-        },
-        scattering: {
-            x: 256,
-            y: 128,
-            z: 32,
-            bytes: {{ ...deflated Float32 blob... }}
-        },
-        irradiance: {
-            x: 64,
-            y: 16,
-            bytes: {{ ...deflated Float32 blob... }}
-        }
-    }
-}
-```
-
-### Table resolution parameters
-
-The resolution fields (`resolution_transmittance`, `resolution_scattering4_R`, etc.) are retained in `parameters`:
-* While `width`, `height`, and `depth` describe the allocated texture extents, the 4D scattering coordinate parametrization $(R, \mu, \mu_s, \nu)$ depends on the specific coordinate divisions $(R=32, M=8, MS=128, N=32)$.
-* Retaining these explicit integers ensures the shader coordinate mapping functions remain completely self-describing regardless of detail settings.
+The `.aura` file is an uncompressed binary Amazon Ion container representing an `AuraArchive`. It contains a version number (currently 2) and an array of bodies. Each body contains a name, spheroid parameters (radius, tilt, flattening, relief), an albedo cubemap with six WebP face blobs, an optional relief cubemap for normal mapping, and an optional atmosphere. The atmosphere is embedded directly rather than wrapped in `AtmosphereArchive` to eliminate redundant version and name fields; `AtmosphereArchive` is only used for `.atmo` intermediate files.
 
 ---
 
-## 5. Unified archive format: `.aura`
+## 5. Module architecture
 
-The `.aura` file is an **uncompressed binary Amazon Ion container** (`IonABI`) representing a `AuraArchive`.
+The codebase is split into three modules with clear responsibilities.
 
-### `.aura` Ion schema
+`AuraDecoding` provides mathematical table reconstruction (unfiltering and unshuffling) and is Wasm-compatible. It contains no compression dependencies to keep the WebAssembly binary small. The key type is `TableDecoder` with a `decode(bytes:count:)` method. This module is used by both the Swift host and the WebAssembly client.
 
-```ion
-$ion_1_0
-{
-    version: 2,
-    bodies: [
-        {
-            name: "Earth",
-            spheroid: {
-                radius: 6371.0e0,
-                tilt: 0.4084e0,
-                flattening: 0.00335e0,
-                relief: 1.0e0
-            },
-            albedo: {
-                px: {{ ...binary webp blob... }},
-                nx: {{ ...binary webp blob... }},
-                py: {{ ...binary webp blob... }},
-                ny: {{ ...binary webp blob... }},
-                pz: {{ ...binary webp blob... }},
-                nz: {{ ...binary webp blob... }}
-            },
-            // Optional: omitted if planet has no relief normal map
-            relief: {
-                px: {{ ...binary webp blob... }},
-                nx: {{ ...binary webp blob... }},
-                py: {{ ...binary webp blob... }},
-                ny: {{ ...binary webp blob... }},
-                pz: {{ ...binary webp blob... }},
-                nz: {{ ...binary webp blob... }}
-            },
-            // Optional: omitted for airless bodies.
-            // Notice: contains an Atmosphere (parameters + tables),
-            // omitting redundant container fields (version and name).
-            atmosphere: {
-                parameters: {
-                    radius_bottom: 6360000.0e0,
-                    radius_top: 6420000.0e0,
-                    radius_sun: 696340000.0e0,
-                    mu_s_min: -0.2079117e0,
-                    rayleigh_scattering: [5.802339e-6, 1.355776e-5, 3.310001e-5],
-                    mie_scattering: [3.996e-6, 3.996e-6, 3.996e-6],
-                    mie_g: 0.8e0,
-                    resolution_transmittance: [256, 64],
-                    resolution_scattering4_R: 32,
-                    resolution_scattering4_M: 8,
-                    resolution_scattering4_MS: 128,
-                    resolution_scattering4_N: 32,
-                    resolution_irradiance: [64, 16],
-                    irradiance: [1.474e0, 1.697e0, 1.778e0]
-                },
-                transmittance: { x: 256, y: 64, bytes: {{ ...deflated Float32 blob... }} },
-                scattering: { x: 256, y: 128, z: 32, bytes: {{ ...deflated Float32 blob... }} },
-                irradiance: { x: 64, y: 16, bytes: {{ ...deflated Float32 blob... }} }
-            }
-        },
-        {
-            name: "The Moon",
-            spheroid: {
-                radius: 1737.4e0,
-                tilt: 0.0269e0,
-                flattening: 0.0e0,
-                relief: 1.5e0
-            },
-            albedo: {
-                px: {{ ...binary webp blob... }},
-                nx: {{ ...binary webp blob... }},
-                py: {{ ...binary webp blob... }},
-                ny: {{ ...binary webp blob... }},
-                pz: {{ ...binary webp blob... }},
-                nz: {{ ...binary webp blob... }}
-            },
-            relief: {
-                px: {{ ...binary webp blob... }},
-                nx: {{ ...binary webp blob... }},
-                py: {{ ...binary webp blob... }},
-                ny: {{ ...binary webp blob... }},
-                pz: {{ ...binary webp blob... }},
-                nz: {{ ...binary webp blob... }}
-            }
-        }
-    ]
-}
-```
+`AuraEncoding` provides table compression (filtering, shuffling, and Deflate) for build-time use only. The key type is `TableEncoder` with an `encode(simd4:count:)` method. This module is not shipped to the client.
 
-### Parameter provenance
-
-Where do `radius`, `tilt`, `flattening`, and `relief` come from during packaging?
-1. **In manifest-driven packaging (`aura pack --manifest <path>`):** Explicitly declared under each body's `spheroid` section. All four fields (`radius`, `tilt`, `flattening`, and `relief`) are required and fail hard if omitted.
-2. **In single-body packaging (`aura pack <textures>`):** Provided via CLI flags. `--radius` is mandatory. `--tilt`, `--flattening`, and `--relief` default to `0.0`, `0.0`, and `1.0` respectively if omitted. In the live game, the simulation's `CelestialBodyState` acts as the authoritative ephemeris source for dynamic orbital orientation and position.
+`Aura` provides high-level archive serialization, atmospheric computation, and decompression orchestration. Key types include `AuraArchive`, `AtmosphereArchive`, `Atmosphere`, and `Atmosphere.Table`. The module contains a `TableDecoder` extension that provides a `decompress()` convenience method combining LZ77 inflation with `TableDecoder.decode()`. This separation keeps LZ77 out of the Wasm binary while providing a clean API for host-side code.
 
 ---
 
-## 6. CLI interface
+## 6. Client integration
 
-The `aura` CLI executable provides two dedicated subcommands:
+JavaScript running on the client thread fetches the `.aura` binary via HTTP GET, parses the uncompressed Ion document using `ion-js`, extracts WebP byte blobs, and passes them to `createImageBitmap(blob)` for off-thread browser-native decoding. For atmosphere tables, JavaScript decompresses Deflate blobs using browser-native `DecompressionStream('deflate')`, then passes the uncompressed shuffled bytes to `Swift.decodeAtmosphereTable(...)` via WebAssembly for mathematical unshuffling. Finally, JavaScript uploads the decoded bitmaps to Three.js textures.
 
-### 6.1. `aura atmosphere`
+WebAssembly, bridged through `AuraDecoding`, never touches texture image bytes and contains no compression or inflation dependencies. It exclusively performs SIMD-accelerated byte-plane deshuffling and PNG Up filter reversal on uncompressed byte buffers.
 
-Numerically solves atmospheric scattering radiative transfer equations and outputs `.atmo` intermediate files.
-
-```bash
-aura atmosphere <configs...> [--detail <1-5>] [--output <path>]
-```
-
-* **Arguments:**
-  * `<configs...>`: Paths to one or more atmospheric `.ion` configuration files (e.g. `World/Atmospheres/Earth.ion`).
-* **Options:**
-  * `-d, --detail <1-5>`: Resolution detail level (default: `3`).
-  * `-o, --output <path>`: Destination `.atmo` file path or directory (defaults to `.build/atmospheres/`).
-* **Multi-config output rules:**
-  * When multiple configuration files are passed, `--output` must be a **directory**. The tool writes `<output_dir>/<Name>.atmo` for each configuration (where `<Name>` is the `name` property declared in the `.ion` config). If a single file path (e.g. ending in `.atmo`) is provided when passing multiple configs, `aura atmosphere` fails immediately with exit code 1:
-    ```
-    Error: Output must be a directory when multiple atmosphere configs are provided.
-    ```
-  * When a single configuration file is passed, `--output` may be either a directory (producing `<output_dir>/<Name>.atmo`) or an explicit file path (e.g. `.build/atmospheres/Earth.atmo`).
-
-### 6.2. `aura pack`
-
-Assembles surface textures, physical parameters, and optional `.atmo` atmosphere intermediates into a `.aura` archive.
-
-```bash
-aura pack [<textures>] \
-    [--manifest <path.ion>] \
-    [--name <name>] \
-    [--atmosphere <path.atmo>] \
-    [--relief-scale <float>] \
-    [--radius <km>] \
-    [--tilt <radians>] \
-    [--flattening <float>] \
-    [--output <path.aura>]
-```
-
-#### Argument rules and mutual exclusion
-
-To comply with `System_ArgumentParser`:
-* The positional `<textures>` argument is declared as optional (`var textures: String?`).
-* `--manifest` and `<textures>` are mutually exclusive:
-  * If `--manifest` is provided, `<textures>` must be omitted.
-  * If `--manifest` is omitted, `<textures>` is required.
-  * If both or neither are provided, `aura pack` fails immediately with exit code 1.
-
-#### Single-body mode
-
-```bash
-aura pack "Public/Earth" \
-    --name "Earth" \
-    --atmosphere ".build/atmospheres/Earth.atmo" \
-    --output "Public/Earth.aura"
-```
-
-* `<textures>`: Directory containing `px.webp`, `nx.webp`, `py.webp`, `ny.webp`, `pz.webp`, `nz.webp`. If a `Relief/` subdirectory is present, its 6 WebP faces are packaged as the relief normal map.
-* `--name <name>`: Planet name (defaults to the directory name of `<textures>`).
-* `--output <path.aura>`: Destination file path (defaults to `<textures>/../<name>.aura`).
-
-#### Multi-body mode (primary)
-
-Multi-body packaging is specified declaratively via an Ion assembly manifest:
-
-```bash
-aura pack --manifest "World/Planetarium/earth_moon.ion"
-```
-
-#### Manifest path resolution
-
-All relative paths declared inside `manifest.ion` (`output`, `textures`, `atmosphere`) are **resolved relative to the directory containing the manifest file**, not the current working directory. This ensures builds are reproducible and independent of where the tool is executed.
-
-#### Assembly manifest schema (`manifest.ion`)
-
-```ion
-$ion_1_0
-{
-    version: 1,
-    output: "../../Public/Earth-Moon.aura",
-    planets: [
-        {
-            name: "Earth",
-            textures: "../../Public/Earth",
-            atmosphere: "../../.build/atmospheres/Earth.atmo",
-            parameters: {
-                radius: 6371.0e0,
-                tilt: 0.4084e0,
-                flattening: 0.00335e0,
-                relief_scale: 1.0e0
-            }
-        },
-        {
-            name: "The Moon",
-            textures: "../../Public/The Moon",
-            parameters: {
-                radius: 1737.4e0,
-                tilt: 0.0269e0,
-                flattening: 0.0e0,
-                relief_scale: 1.5e0
-            }
-        }
-    ]
-}
-```
+This architecture yields four key performance benefits. There is no whole-archive Gzip penalty, eliminating CPU overhead on multi-megabyte textures. There is zero Wasm memory amplification, since WebP images are decoded directly into GPU memory. All six cubemap faces decode concurrently via browser workers. The Wasm binary remains lightweight because it embeds no zlib or deflate code.
 
 ---
 
-## 7. Error handling and validation
+## 7. Table resolution parameters
 
-`aura pack` enforces strict validation to ensure archives are never written in corrupted or incomplete states:
+The `AtmosphereParameters` struct contains both physical constants and resolution metadata. Physical constants used by the shader include radii, the minimum sun zenith angle cosine, scattering coefficients, and the Mie phase function parameter. Resolution metadata includes transmittance and irradiance dimensions, plus the four-dimensional scattering coordinate parametrization (R, μ, μs, ν).
 
-1. **Missing albedo face files:**
-   If any of `px.webp`, `nx.webp`, `py.webp`, `ny.webp`, `pz.webp`, `nz.webp` are missing from the `<textures>` directory, `aura pack` fails immediately with exit code 1:
-   ```
-   Error: Missing required albedo faces in 'Public/Earth': [py.webp, ny.webp]
-   ```
-2. **Partial `Relief/` directory:**
-   If a `Relief/` subdirectory exists, it must contain **all 6** faces. If fewer than 6 faces are found, `aura pack` fails immediately with exit code 1:
-   ```
-   Error: Incomplete relief normal map in 'Public/The Moon/Relief': missing [pz.webp]
-   ```
-   If the `Relief/` directory is entirely absent, relief mapping is cleanly omitted.
-3. **Missing or corrupt `.atmo` file:**
-   If an atmosphere path is provided but the file does not exist or fails Ion decoding, `aura pack` fails immediately with exit code 1:
-   ```
-   Error: Atmosphere intermediate not found at '.build/atmospheres/Earth.atmo'
-   ```
-4. **Manifest validation errors:**
-   If a manifest specifies non-existent texture directories or invalid parameter types, `aura pack` aborts before writing output.
+The resolution metadata is retained because the 4D scattering coordinate parametrization depends on specific coordinate divisions. Retaining these explicit integers ensures shader coordinate mapping functions remain self-describing regardless of detail settings.
 
 ---
 
-## 8. Swift library API (`Aura`, `AuraEncoding`, and `AuraDecoding`)
+## 8. Binary blob encoding
 
-### Domain separation: `Atmosphere` vs `AtmosphereArchive`
-
-To prevent schema contradictions and eliminate redundant fields when embedding atmosphere tables:
-* **`Atmosphere` (`parameters` + `transmittance` + `scattering` + `irradiance`):**
-  The pure payload holding physical atmosphere parameters and precomputed table data. This is the exact type embedded under `atmosphere` in `AuraArchive.Body`.
-* **`AtmosphereArchive` (`version` + `name` + `atmosphere`):**
-  The top-level file container for `.atmo` intermediate files. It wraps `Atmosphere` alongside the planet's identity and schema version.
-
-```swift
-public struct Atmosphere: Sendable {
-    public var transmittance: Atmosphere.Table
-    public var scattering: Atmosphere.Table
-    public var irradiance: Atmosphere.Table
-    public var parameters: AtmosphereParameters
-}
-
-extension Atmosphere {
-    public struct Table: Sendable {
-        public let x: Int
-        public let y: Int
-        public let z: Int
-        public let bytes: [UInt8]
-        
-        public var volume: Int { x * y * z }
-        public func decompress() throws -> [SIMD4<Float>]
-    }
-}
-
-public struct AtmosphereArchive: Sendable {
-    public var name: String
-    public var atmosphere: Atmosphere
-}
-```
-
-### Planetary archive schema
-
-```swift
-public struct AuraArchive: Sendable {
-    public let bodies: [Body]
-}
-
-extension AuraArchive {
-    public struct Body: Sendable {
-        public let name: String
-        public var spheroid: Spheroid
-        public var albedo: Cubemap
-        public var relief: Cubemap?
-        public var atmosphere: Atmosphere?
-    }
-    
-    public struct Spheroid: Sendable {
-        public var radius: Double
-        public var relief: Double
-        public var tilt: Double
-        public var flattening: Double
-    }
-    
-    public struct Cubemap: Sendable {
-        public var px: [UInt8]
-        public var nx: [UInt8]
-        public var py: [UInt8]
-        public var ny: [UInt8]
-        public var pz: [UInt8]
-        public var nz: [UInt8]
-    }
-}
-```
-
-### Host-side table decompression and extraction
-
-In `Atmosphere`, each table's `bytes` contains Deflate-compressed bytes. On the host side:
-1. `Atmosphere.Table.decompress()` decompresses the Deflate stream using `LZ77.Inflator` and reverses byte plane shuffling/filtering using `TableDecoder.decode(bytes:count:)` to yield reconstructed `SIMD4<Float>` texels.
-2. `TableDecoder.decode(bytes:count:)` in the `AuraDecoding` module performs only the mathematical unfiltering and unshuffling (no inflation).
-3. `TableDecoder.decompress(bytes:count:)` is an extension in the `Aura` module that combines inflation + unfiltering for convenience.
-
-### One Type Per File convention
-
-In accordance with the project’s [institutional Swift style guide](file:///swift/aura/AGENTS.md), each nested structure and extension must be placed in its own dedicated source file matching its qualified type name:
-
-```
-Sources/Aura/
-├── AtmosphereArchive.swift
-├── Atmosphere.swift
-├── Atmosphere.Table.swift
-├── Atmosphere.TableError.swift
-├── AtmosphereParameters.swift
-├── AtmosphereConfiguration.swift
-├── AuraArchive.swift
-├── AuraArchive.Body.swift
-├── AuraArchive.Cubemap.swift
-├── AuraArchive.Spheroid.swift
-└── ...
-```
-
-### Binary blob encoding
-
-All binary payloads—including cubemap texture faces in `AuraArchive.Cubemap` (`px`, `nx`, `py`, `ny`, `pz`, `nz`) and table buffers in `Atmosphere.Table` (`data`)—must be encoded as binary Amazon Ion blobs (`{{ ... }}`). In Swift, these byte collections must be wrapped and decoded using `Ion.BlobView<[UInt8], Ion.BlobType>` (and `Ion.BlobView<ArraySlice<UInt8>, Ion.BlobType>`) to ensure they serialize as Ion binary blobs rather than integer sequences.
-
-### Serialization, deserialization, and test support
-
-All structures conform to **both `IonEncodableStruct` and `IonDecodableStruct`**:
-
-```swift
-extension AuraArchive {
-    public func serialize() throws -> [UInt8]
-    public static func deserialize(from bytes: [UInt8]) throws -> AuraArchive
-}
-
-extension AtmosphereArchive {
-    public func serialize() throws -> [UInt8]
-    public static func deserialize(from bytes: [UInt8]) throws -> AtmosphereArchive
-}
-```
-
-* **Unit and golden testing:** Round-trip deserialization (`serialize()` followed by `deserialize(from:)`) is fully supported and tested in `AuraTests` and `AuraGoldenTests` to guarantee binary compatibility and serialization fidelity.
-* **Execution boundary:** `AuraArchive.deserialize(from:)` is a host-side Swift utility. It is **not** called by the in-game WebAssembly engine, ensuring that large WebP byte arrays are never duplicated in the Wasm linear heap.
+All binary payloads, including cubemap faces and table buffers, are encoded as binary Amazon Ion blobs rather than integer sequences. In Swift, these byte collections must be wrapped using `Ion.BlobView<[UInt8], Ion.BlobType>` to ensure proper serialization.
 
 ---
 
-## 9. Client integration (TypeScript & WebGL)
+## 9. Serialization boundary
 
-### Architectural responsibility boundary
-
-* **JavaScript (client thread):**
-  1. Fetches the `.aura` binary using standard HTTP GET.
-  2. Parses the uncompressed Ion document directly using `ion-js`.
-  3. Extracts the WebP byte blobs and passes them to `createImageBitmap(blob)`.
-  4. Decompresses raw atmosphere table Deflate blobs using browser-native `DecompressionStream('deflate')`.
-  5. Passes uncompressed, shuffled table bytes to `Swift.decodeAtmosphereTable(...)` for mathematical unshuffling.
-  6. Uploads bitmaps to Three.js `CubeTexture`s and `DataTexture` / `Data3DTexture`.
-* **WebAssembly (Swift bridge via `AuraDecoding`):**
-  * Never touches texture image bytes.
-  * Contains **no compression/inflation dependencies** (keeping Wasm binary footprint small).
-  * Exclusively performs SIMD-accelerated byte-plane deshuffling and PNG Up filter reversal on uncompressed byte buffers via `TableDecoder.decode(...)`.
-
-### JavaScript decoding code
-
-```typescript
-export async function loadAuraArchive(url: string): Promise<Map<string, PlanetaryBodyData>> {
-    const response = await fetch(url);
-    const arrayBuffer = await response.arrayBuffer();
-
-    // Directly parse uncompressed Ion binary:
-    const root = ion.load(new Uint8Array(arrayBuffer));
-    const result = new Map<string, PlanetaryBodyData>();
-    const bodiesNode = root.get('bodies');
-
-    if (!bodiesNode) {
-        throw new Error(`Invalid archive at ${url}: missing 'bodies' list`);
-    }
-
-    for (const entry of bodiesNode.elements()) {
-        const name = entry.get('name').stringValue();
-
-        // Extract WebP face blobs directly without Wasm memory copying:
-        const albedoBlobs = extractCubemapBlobs(entry.get('albedo'));
-        const reliefBlobs = entry.get('relief') ? extractCubemapBlobs(entry.get('relief')) : null;
-
-        // Decode WebP faces asynchronously on browser background threads:
-        const albedoCube = await createCubeTextureFromBlobs(albedoBlobs, SRGBColorSpace);
-        const reliefCube = reliefBlobs ? await createCubeTextureFromBlobs(reliefBlobs, LinearSRGBColorSpace) : null;
-
-        // If atmosphere is present, decompress and unshuffle tables:
-        let atmosphereData: PlanetaryAtmosphere | null = null;
-        const atmoNode = entry.get('atmosphere');
-        if (atmoNode) {
-            atmosphereData = await decodeAtmosphere(name, atmoNode);
-        }
-
-        result.set(name, {
-            parameters: extractParameters(entry.get('spheroid')),
-            albedoCube,
-            reliefCube,
-            atmosphere: atmosphereData,
-        });
-    }
-
-    return result;
-}
-
-async function decodeAtmosphere(name: string, atmoNode: ion.dom.Value): Promise<PlanetaryAtmosphere> {
-    async function decompressTable(tableNode: ion.dom.Value): Promise<{ data: Float32Array; x: number; y: number; z: number }> {
-        const x = tableNode.get('x').numberValue();
-        const y = tableNode.get('y').numberValue();
-        const z = tableNode.get('z')?.numberValue() ?? 1;
-        const deflatedBlob = tableNode.get('bytes').uInt8ArrayValue();
-
-        // 1. Decompress raw Deflate stream using browser-native DecompressionStream:
-        const stream = new Response(deflatedBlob).body!.pipeThrough(
-            new DecompressionStream('deflate') as unknown as ReadableWritablePair<Uint8Array, Uint8Array>
-        );
-        const decompressedShuffled = new Uint8Array(await new Response(stream).arrayBuffer());
-
-        // 2. Pass uncompressed, shuffled bytes to Wasm for SIMD byte-plane deshuffling:
-        const floatTexels = Swift.decodeAtmosphereTable(decompressedShuffled, x, y, z);
-        return { data: floatTexels, x, y, z };
-    }
-
-    const [trans, scat, irrad] = await Promise.all([
-        decompressTable(atmoNode.get('transmittance')),
-        decompressTable(atmoNode.get('scattering')),
-        decompressTable(atmoNode.get('irradiance')),
-    ]);
-
-    return {
-        parameters: extractAtmosphereParameters(atmoNode.get('parameters')),
-        tables: {
-            transmittanceTable: createDataTexture(trans),
-            scatteringTable: createData3DTexture(scat),
-            irradianceTable: createDataTexture(irrad),
-        }
-    };
-}
-
-async function createCubeTextureFromBlobs(
-    faces: Record<'px' | 'nx' | 'py' | 'ny' | 'pz' | 'nz', Uint8Array>,
-    colorSpace: ColorSpace
-): Promise<CubeTexture> {
-    const keys: Array<'px' | 'nx' | 'py' | 'ny' | 'pz' | 'nz'> = ['px', 'nx', 'py', 'ny', 'pz', 'nz'];
-    const bitmaps = await Promise.all(
-        keys.map(async (key) => {
-            const blob = new Blob([faces[key]], { type: 'image/webp' });
-            return await createImageBitmap(blob);
-        })
-    );
-
-    const texture = new CubeTexture(bitmaps);
-    texture.colorSpace = colorSpace;
-    texture.needsUpdate = true;
-    return texture;
-}
-```
-
-### Key performance benefits
-
-1. **No whole-archive Gzip penalty:**
-   Zero decompression CPU overhead on multi-megabyte texture files.
-2. **Zero Wasm memory amplification:**
-   Large WebP textures are decoded by the browser’s C++ image pipeline directly into GPU memory, avoiding copying images into or out of the WebAssembly heap.
-3. **True parallel decoding:**
-   All 6 faces of the cubemap are decoded concurrently using native browser worker threads via `createImageBitmap`.
-4. **Lightweight WebAssembly footprint:**
-   `AuraDecoding` in Wasm does not link or embed zlib/deflate code; decompression runs via browser-native streams in JavaScript.
+`AuraArchive.deserialize(from:)` is a host-side Swift utility only. It is never called by the in-game WebAssembly engine, ensuring that large WebP byte arrays are never duplicated in the Wasm linear heap. The client parses Ion directly using `ion-js`.
