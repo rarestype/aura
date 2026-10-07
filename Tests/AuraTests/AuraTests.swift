@@ -64,9 +64,7 @@ import Testing
 
         let compressed: [UInt8] = TableEncoder.compress(
             simd4: data,
-            width: width,
-            height: height,
-            depth: depth
+            count: (x: width, y: height, z: depth)
         )
 
         #expect(compressed.count < data.count * MemoryLayout<SIMD4<Float>>.size)
@@ -100,9 +98,7 @@ import Testing
 
         let compressed: [UInt8] = TableEncoder.compress(
             simd4: data,
-            width: width,
-            height: height,
-            depth: 1
+            count: (x: width, y: height, z: 1)
         )
 
         let descriptor: AtmosphereDescriptor.TableDescriptor = .init(
@@ -131,15 +127,13 @@ import Testing
             }
         }
 
-        let shuffled: [UInt8] = TableEncoder.filterAndShuffle(
+        let encoded: [UInt8] = TableEncoder.encode(
             simd4: data,
-            width: width,
-            height: height,
-            depth: depth
+            count: (x: width, y: height, z: depth)
         )
 
         let decoded: [SIMD4<Float>] = TableDecoder.decode(
-            shuffled: shuffled,
+            shuffled: encoded,
             width: width,
             height: height,
             depth: depth
@@ -152,7 +146,7 @@ import Testing
             count: width * height * depth
         )
         TableDecoder.decode(
-            shuffled: shuffled,
+            shuffled: encoded,
             into: &inoutDecoded,
             width: width,
             height: height,
@@ -162,7 +156,7 @@ import Testing
 
         var rawBytesDecoded: [UInt8] = .init(repeating: 0, count: width * height * depth * 16)
         TableDecoder.decode(
-            shuffled: shuffled,
+            shuffled: encoded,
             into: &rawBytesDecoded,
             width: width,
             height: height,

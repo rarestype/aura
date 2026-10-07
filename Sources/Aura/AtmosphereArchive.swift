@@ -97,9 +97,11 @@ extension AtmosphereArchive {
                 simd4: table.transmittance.buffer.map {
                     .init(.init($0.x), .init($0.y), .init($0.z), 1.0)
                 },
-                width: atmosphere.resolution.transmittance.x,
-                height: atmosphere.resolution.transmittance.y,
-                depth: 1
+                count: (
+                    atmosphere.resolution.transmittance.x,
+                    atmosphere.resolution.transmittance.y,
+                    1
+                )
             )
         )
 
@@ -112,9 +114,11 @@ extension AtmosphereArchive {
                 simd4: zip(table.scattering.buffer, table.mie.buffer).map {
                     .init(.init($0.x), .init($0.y), .init($0.z), .init($1.x))
                 },
-                width: atmosphere.resolution.scattering.x,
-                height: atmosphere.resolution.scattering.y,
-                depth: atmosphere.resolution.scattering.z
+                count: (
+                    atmosphere.resolution.scattering.x,
+                    atmosphere.resolution.scattering.y,
+                    atmosphere.resolution.scattering.z
+                )
             )
         )
 
@@ -127,9 +131,11 @@ extension AtmosphereArchive {
                 simd4: table.irradiance.buffer.map {
                     .init(.init($0.x), .init($0.y), .init($0.z), 1.0)
                 },
-                width: atmosphere.resolution.irradiance.x,
-                height: atmosphere.resolution.irradiance.y,
-                depth: 1
+                count: (
+                    atmosphere.resolution.irradiance.x,
+                    atmosphere.resolution.irradiance.y,
+                    1
+                )
             )
         )
 
