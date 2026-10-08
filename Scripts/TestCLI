@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
+AURA_OUT='Earth-Moon.aura'
 AURA_BIN="${AURA_BIN:-.build/release/aura}"
 if [ ! -x "$AURA_BIN" ]; then
     echo "Executable not found at '$AURA_BIN', building..."
@@ -79,7 +80,6 @@ echo "    Generated Earth.aura successfully."
 echo "--> Testing 'aura pack' (manifest mode)..."
 cat << EOF > "$TMP_DIR/manifest.ion"
 {
-    output: "Earth-Moon.aura",
     bodies: [
         {
             name: "Earth",
@@ -106,13 +106,13 @@ cat << EOF > "$TMP_DIR/manifest.ion"
 }
 EOF
 
-"$AURA_BIN" pack --manifest "$TMP_DIR/manifest.ion"
+"$AURA_BIN" pack --manifest "$TMP_DIR/manifest.ion" --output "$AURA_OUT"
 
-if [ ! -s "$TMP_DIR/Earth-Moon.aura" ]; then
+if [ ! -s "${TMP_DIR}/${AURA_OUT}" ]; then
     echo "Error: Multi-body manifest archive not generated or empty." >&2
     exit 1
 fi
-echo "    Generated Earth-Moon.aura successfully."
+echo "    Generated ${AURA_OUT} successfully."
 
 # 6. Test CLI validation & error handling
 echo "--> Testing validation and error handling..."
