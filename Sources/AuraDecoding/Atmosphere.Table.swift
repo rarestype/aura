@@ -1,6 +1,4 @@
-import AuraDecoding
 public import Ion
-import LZ77
 
 extension Atmosphere {
     @frozen public struct Table: Sendable {

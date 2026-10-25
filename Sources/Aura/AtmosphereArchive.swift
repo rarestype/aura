@@ -140,16 +140,16 @@ extension AtmosphereArchive {
             radius_top: atmosphere.radius.top,
             radius_sun: atmosphere.radius.sun,
             mu_s_min: atmosphere.μsmin,
-            rayleigh_scattering: atmosphere.rayleigh.scattering,
-            mie_scattering: atmosphere.mie.scattering,
+            rayleigh_scattering: atmosphere.rayleigh.scattering.storage,
+            mie_scattering: atmosphere.mie.scattering.storage,
             mie_g: atmosphere.mie.g,
-            resolution_transmittance: atmosphere.resolution.transmittance,
+            resolution_transmittance: atmosphere.resolution.transmittance.storage,
             resolution_scattering4_R: atmosphere.resolution.scattering4.R,
             resolution_scattering4_M: atmosphere.resolution.scattering4.M,
             resolution_scattering4_MS: atmosphere.resolution.scattering4.MS,
             resolution_scattering4_N: atmosphere.resolution.scattering4.N,
-            resolution_irradiance: atmosphere.resolution.irradiance,
-            irradiance: atmosphere.irradiance
+            resolution_irradiance: atmosphere.resolution.irradiance.storage,
+            irradiance: atmosphere.irradiance.storage
         )
 
         return .init(
