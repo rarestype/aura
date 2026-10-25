@@ -4,6 +4,8 @@ import Darwin
 import Glibc
 #elseif canImport(Musl)
 import Musl
+#elseif canImport(WASILibc)
+import WASILibc
 #endif
 
 extension Double {
@@ -20,6 +22,8 @@ extension Double: ElementaryFunctions {
         Glibc.sqrt(x)
         #elseif canImport(Musl)
         Musl.sqrt(x)
+        #elseif canImport(WASILibc)
+        WASILibc.sqrt(x)
         #endif
     }
 
@@ -30,6 +34,8 @@ extension Double: ElementaryFunctions {
         Glibc.log(x)
         #elseif canImport(Musl)
         Musl.log(x)
+        #elseif canImport(WASILibc)
+        WASILibc.log(x)
         #endif
     }
 
@@ -40,6 +46,8 @@ extension Double: ElementaryFunctions {
         Glibc.exp(x)
         #elseif canImport(Musl)
         Musl.exp(x)
+        #elseif canImport(WASILibc)
+        WASILibc.exp(x)
         #endif
     }
 
@@ -50,6 +58,8 @@ extension Double: ElementaryFunctions {
         Glibc.sin(x)
         #elseif canImport(Musl)
         Musl.sin(x)
+        #elseif canImport(WASILibc)
+        WASILibc.sin(x)
         #endif
     }
 
@@ -60,6 +70,8 @@ extension Double: ElementaryFunctions {
         Glibc.cos(x)
         #elseif canImport(Musl)
         Musl.cos(x)
+        #elseif canImport(WASILibc)
+        WASILibc.cos(x)
         #endif
     }
 
@@ -70,6 +82,8 @@ extension Double: ElementaryFunctions {
         Glibc.tan(x)
         #elseif canImport(Musl)
         Musl.tan(x)
+        #elseif canImport(WASILibc)
+        WASILibc.tan(x)
         #endif
     }
 
@@ -80,6 +94,8 @@ extension Double: ElementaryFunctions {
         Glibc.asin(x)
         #elseif canImport(Musl)
         Musl.asin(x)
+        #elseif canImport(WASILibc)
+        WASILibc.asin(x)
         #endif
     }
 
@@ -90,6 +106,8 @@ extension Double: ElementaryFunctions {
         Glibc.acos(x)
         #elseif canImport(Musl)
         Musl.acos(x)
+        #elseif canImport(WASILibc)
+        WASILibc.acos(x)
         #endif
     }
 
@@ -100,6 +118,8 @@ extension Double: ElementaryFunctions {
         Glibc.atan(x)
         #elseif canImport(Musl)
         Musl.atan(x)
+        #elseif canImport(WASILibc)
+        WASILibc.atan(x)
         #endif
     }
 
@@ -110,6 +130,8 @@ extension Double: ElementaryFunctions {
         Glibc.pow(base, exponent)
         #elseif canImport(Musl)
         Musl.pow(base, exponent)
+        #elseif canImport(WASILibc)
+        WASILibc.pow(base, exponent)
         #endif
     }
 
@@ -120,6 +142,8 @@ extension Double: ElementaryFunctions {
         Glibc.atan2(y, x)
         #elseif canImport(Musl)
         Musl.atan2(y, x)
+        #elseif canImport(WASILibc)
+        WASILibc.atan2(y, x)
         #endif
     }
 }
