@@ -74,16 +74,16 @@ extension AtmosphereParameters: IonEncodableStruct {
         ion[.radius_top] = self.radius_top
         ion[.radius_sun] = self.radius_sun
         ion[.mu_s_min] = self.mu_s_min
-        ion[.rayleigh_scattering] = Self.components(self.rayleigh_scattering)
-        ion[.mie_scattering] = Self.components(self.mie_scattering)
+        ion[.rayleigh_scattering] = self.rayleigh_scattering
+        ion[.mie_scattering] = self.mie_scattering
         ion[.mie_g] = self.mie_g
-        ion[.resolution_transmittance] = Self.components(self.resolution_transmittance)
+        ion[.resolution_transmittance] = self.resolution_transmittance
         ion[.resolution_scattering4_R] = self.resolution_scattering4_R
         ion[.resolution_scattering4_M] = self.resolution_scattering4_M
         ion[.resolution_scattering4_MS] = self.resolution_scattering4_MS
         ion[.resolution_scattering4_N] = self.resolution_scattering4_N
-        ion[.resolution_irradiance] = Self.components(self.resolution_irradiance)
-        ion[.irradiance] = Self.components(self.irradiance)
+        ion[.resolution_irradiance] = self.resolution_irradiance
+        ion[.irradiance] = self.irradiance
     }
 }
 
@@ -94,40 +94,16 @@ extension AtmosphereParameters: IonDecodableStruct {
             radius_top: try ion[.radius_top].decode(),
             radius_sun: try ion[.radius_sun].decode(),
             mu_s_min: try ion[.mu_s_min].decode(),
-            rayleigh_scattering: try Self.vector(ion[.rayleigh_scattering].decode()),
-            mie_scattering: try Self.vector(ion[.mie_scattering].decode()),
+            rayleigh_scattering: try ion[.rayleigh_scattering].decode(),
+            mie_scattering: try ion[.mie_scattering].decode(),
             mie_g: try ion[.mie_g].decode(),
-            resolution_transmittance: try Self.vector(ion[.resolution_transmittance].decode()),
+            resolution_transmittance: try ion[.resolution_transmittance].decode(),
             resolution_scattering4_R: try ion[.resolution_scattering4_R].decode(),
             resolution_scattering4_M: try ion[.resolution_scattering4_M].decode(),
             resolution_scattering4_MS: try ion[.resolution_scattering4_MS].decode(),
             resolution_scattering4_N: try ion[.resolution_scattering4_N].decode(),
-            resolution_irradiance: try Self.vector(ion[.resolution_irradiance].decode()),
-            irradiance: try Self.vector(ion[.irradiance].decode())
+            resolution_irradiance: try ion[.resolution_irradiance].decode(),
+            irradiance: try ion[.irradiance].decode()
         )
-    }
-}
-extension AtmosphereParameters {
-    /// The components of `vector`, which the archive stores as a list.
-    private static func components<Scalar>(_ vector: SIMD3<Scalar>) -> [Scalar] {
-        [vector.x, vector.y, vector.z]
-    }
-
-    private static func components<Scalar>(_ vector: SIMD2<Scalar>) -> [Scalar] {
-        [vector.x, vector.y]
-    }
-
-    private static func vector<Scalar>(_ components: [Scalar]) throws -> SIMD3<Scalar> {
-        guard components.count == 3 else {
-            throw VectorError.count(expected: 3, actual: components.count)
-        }
-        return .init(components[0], components[1], components[2])
-    }
-
-    private static func vector<Scalar>(_ components: [Scalar]) throws -> SIMD2<Scalar> {
-        guard components.count == 2 else {
-            throw VectorError.count(expected: 2, actual: components.count)
-        }
-        return .init(components[0], components[1])
     }
 }

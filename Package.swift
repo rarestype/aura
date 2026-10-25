@@ -23,7 +23,6 @@ let package: Package = .init(
             name: "AuraDecoding",
             dependencies: [
                 .product(name: "Ion", package: "swift-ion"),
-                .product(name: "LZ77", package: "swift-png"),
             ]
         ),
         .target(
