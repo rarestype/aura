@@ -15,7 +15,7 @@ let package: Package = .init(
 
         .package(url: "https://github.com/rarestype/h", from: "1.0.1"),
         .package(url: "https://github.com/rarestype/swift-io", from: "3.2.0"),
-        .package(url: "https://github.com/rarestype/swift-ion", from: "2.2.1"),
+        .package(url: "https://github.com/rarestype/swift-ion", from: "2.3.0"),
         .package(url: "https://github.com/tayloraswift/swift-png", from: "4.5.1"),
     ],
     targets: [
