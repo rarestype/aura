@@ -5,32 +5,32 @@ public import Ion
     public var radius_top: Double
     public var radius_sun: Double
     public var mu_s_min: Double
-    var rayleigh_scattering: Vector3<Double>
-    var mie_scattering: Vector3<Double>
+    public var rayleigh_scattering: SIMD3<Double>
+    public var mie_scattering: SIMD3<Double>
     public var mie_g: Double
-    var resolution_transmittance: Vector2<Int>
+    public var resolution_transmittance: SIMD2<Int>
     public var resolution_scattering4_R: Int
     public var resolution_scattering4_M: Int
     public var resolution_scattering4_MS: Int
     public var resolution_scattering4_N: Int
-    var resolution_irradiance: Vector2<Int>
-    var irradiance: Vector3<Double>
+    public var resolution_irradiance: SIMD2<Int>
+    public var irradiance: SIMD3<Double>
 
-    init(
+    public init(
         radius_bottom: Double,
         radius_top: Double,
         radius_sun: Double,
         mu_s_min: Double,
-        rayleigh_scattering: Vector3<Double>,
-        mie_scattering: Vector3<Double>,
+        rayleigh_scattering: SIMD3<Double>,
+        mie_scattering: SIMD3<Double>,
         mie_g: Double,
-        resolution_transmittance: Vector2<Int>,
+        resolution_transmittance: SIMD2<Int>,
         resolution_scattering4_R: Int,
         resolution_scattering4_M: Int,
         resolution_scattering4_MS: Int,
         resolution_scattering4_N: Int,
-        resolution_irradiance: Vector2<Int>,
-        irradiance: Vector3<Double>
+        resolution_irradiance: SIMD2<Int>,
+        irradiance: SIMD3<Double>
     ) {
         self.radius_bottom = radius_bottom
         self.radius_top = radius_top
