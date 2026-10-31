@@ -33,10 +33,7 @@ jobs:
             -   name: 💖 Install Swift 💖
                 uses: rarestype/swift-install-action@v1
                 with:
-                    swift-release: 6.4.1-RELEASE
-                    # the coroutine frame fix (swiftlang/llvm-project d7f258ad2a), until Swift
-                    # 6.4.2, which makes this fail as a reminder to remove it
-                    swift-overlay: 6.4.1-RELEASE-81bd22795
+                    swift-release: 6.4.2-RELEASE
 
             -   name: 💖 Checkout repository 💖
                 uses: actions/checkout@v6
