@@ -6,7 +6,7 @@ public struct Atmosphere: Sendable {
     public var irradiance: Table
     public var parameters: AtmosphereParameters
 
-    init(
+    public init(
         transmittance: Table,
         scattering: Table,
         irradiance: Table,
