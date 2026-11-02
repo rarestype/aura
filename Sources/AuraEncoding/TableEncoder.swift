@@ -6,26 +6,28 @@ extension TableEncoder {
         simd4: [SIMD4<Float>],
         count: (x: Int, y: Int, z: Int),
     ) -> [UInt8] {
-        simd4.withUnsafeBytes {
-            Self.encode(bytes: $0, count: count, stride: MemoryLayout<SIMD4<Float>>.stride)
-        }
+        Self.encode(
+            bytes: simd4.span.bytes,
+            count: count,
+            stride: MemoryLayout<SIMD4<Float>>.stride
+        )
     }
 
     private static func encode(
-        bytes: UnsafeRawBufferPointer,
+        bytes: RawSpan,
         count: (x: Int, y: Int, z: Int),
         stride bpp: Int,
     ) -> [UInt8] {
         let volume: Int = count.x * count.y * count.z
 
         precondition(
-            bytes.count >= volume * bpp,
+            bytes.byteCount >= volume * bpp,
             "Raw buffer is smaller than width * height * depth * bpp"
         )
 
         // PNG Up filter along Y within each slice Z
         let pitch: Int = count.x * bpp
-        let filtered: [UInt8] = .init(unsafeUninitializedCapacity: bytes.count) {
+        let filtered: [UInt8] = .init(unsafeUninitializedCapacity: bytes.byteCount) {
             for z: Int in 0 ..< count.z {
                 let start: Int = z * count.y * pitch
 
@@ -44,11 +46,11 @@ extension TableEncoder {
                 }
             }
 
-            $1 = bytes.count
+            $1 = bytes.byteCount
         }
 
         // Byte shuffle: transpose from (volume, bpp) to (bpp, volume)
-        return .init(unsafeUninitializedCapacity: bytes.count) {
+        return .init(unsafeUninitializedCapacity: bytes.byteCount) {
             for p: Int in 0 ..< bpp {
                 let start: Int = p * volume
                 for i: Int in 0 ..< volume {
@@ -56,7 +58,7 @@ extension TableEncoder {
                 }
             }
 
-            $1 = bytes.count
+            $1 = bytes.byteCount
         }
     }
 }

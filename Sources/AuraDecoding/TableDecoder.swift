@@ -3,8 +3,15 @@
 extension TableDecoder {
     /// Inverts byte plane shuffling and PNG Up filtering on a preprocessed buffer,
     /// returning reconstructed `SIMD4<Float>` texels.
+    @inlinable public static func decode(
+        bytes array: [UInt8],
+        count: (x: Int, y: Int, z: Int)
+    ) -> [SIMD4<Float>] {
+        Self.decode(bytes: array.span.bytes, count: count)
+    }
+
     public static func decode(
-        bytes: [UInt8],
+        bytes: RawSpan,
         count: (x: Int, y: Int, z: Int)
     ) -> [SIMD4<Float>] {
         Self.decode(bytes: bytes, count: count, bpp: MemoryLayout<SIMD4<Float>>.stride)
@@ -13,7 +20,7 @@ extension TableDecoder {
     /// Inverts byte plane shuffling and PNG Up filtering on a preprocessed buffer,
     /// returning raw unmarshaled bytes.
     private static func decode(
-        bytes: [UInt8],
+        bytes: RawSpan,
         count: (x: Int, y: Int, z: Int),
         bpp: Int
     ) -> [SIMD4<Float>] {
@@ -21,7 +28,7 @@ extension TableDecoder {
         let pitch: Int = count.x * bpp
 
         precondition(
-            bytes.count == volume * bpp,
+            bytes.byteCount == volume * bpp,
             "Shuffled buffer is smaller than count.x * count.y * count.z * bpp"
         )
 
@@ -41,7 +48,8 @@ extension TableDecoder {
                         for x: Int in 0 ..< count.x {
                             let start: Int = start + x * bpp
                             for p: Int in 0 ..< bpp {
-                                output[start + p] = bytes[p * volume + i]
+                                let j: Int = p * volume + i
+                                output[start + p] = bytes[unchecked: j]
                             }
                             i += 1
                         }
@@ -50,7 +58,8 @@ extension TableDecoder {
                             let start: Int = start + x * bpp
                             let prior: Int = prior + x * bpp
                             for p: Int in 0 ..< bpp {
-                                output[start + p] = output[prior + p] &+ bytes[p * volume + i]
+                                let j: Int = p * volume + i
+                                output[start + p] = output[prior + p] &+ bytes[unchecked: j]
                             }
                             i += 1
                         }
