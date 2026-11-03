@@ -20,8 +20,11 @@ extension AuraCLI {
 
         @Option(
             name: [.customLong("threads"), .customShort("j")],
-            help: "Number of threads to use for precomputation."
-        ) var threads: Int = 4
+            help: """
+            Number of threads to use for precomputation, which does not change the output \
+            (default: the number of processors)
+            """
+        ) var threads: Int = AuraCLI.processors
 
         @Option(
             name: [.customLong("output"), .customShort("o")],

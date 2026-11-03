@@ -25,8 +25,24 @@ extension AuraCLI {
 
         @Option(
             name: .customLong("atmosphere"),
-            help: "Path to .atmo intermediate file"
+            help: """
+            Path to an .atmo intermediate file, or to an atmospheric (.ion) configuration, \
+            which is baked, or reused from the atmosphere cache
+            """
         ) var atmosphere: FilePath?
+
+        @Option(
+            name: [.customLong("detail"), .customShort("d")],
+            help: "The level of detail (1 to 5) to bake atmospheric configurations at"
+        ) var detail: Int = 3
+
+        @Option(
+            name: [.customLong("threads"), .customShort("j")],
+            help: """
+            Number of threads to bake atmospheric configurations with \
+            (default: the number of processors)
+            """
+        ) var threads: Int = AuraCLI.processors
 
         @Option(
             name: [.customLong("relief"), .customLong("relief-scale")],
@@ -54,18 +70,23 @@ extension AuraCLI {
         ) var output: FilePath?
     }
 }
-extension AuraCLI.Pack: ParsableCommand {
+extension AuraCLI.Pack: AsyncParsableCommand {
     static var configuration: CommandConfiguration {
         .init(
             commandName: "pack",
             abstract: """
-            Assembles surface textures, physical parameters, and optional .atmo \
-            atmosphere intermediates into a .aura archive
+            Assembles surface textures, physical parameters, and optional atmospheres into \
+            a .aura archive, baking any atmosphere given as a configuration, unless the \
+            atmosphere cache already has it
             """
         )
     }
 
-    mutating func run() throws {
+    mutating func run() async throws {
+        guard 1 ... 5 ~= self.detail else {
+            throw ValidationError.init("Detail must be between 1 and 5")
+        }
+
         switch (manifest: self.manifest, textures: self.textures) {
         case (_?, _?):
             throw ValidationError.init(
@@ -76,15 +97,15 @@ extension AuraCLI.Pack: ParsableCommand {
                 "Either positional textures or --manifest must be provided"
             )
         case (manifest: let manifest?, nil):
-            try self.run(manifest: manifest)
+            try await self.run(manifest: manifest)
 
         case (nil, textures: let textures?):
-            try self.run(textures: textures)
+            try await self.run(textures: textures)
         }
     }
 }
 extension AuraCLI.Pack {
-    private func run(textures: FilePath.Directory) throws {
+    private func run(textures: FilePath.Directory) async throws {
         guard
         let radius: Double = self.radius else {
             throw ValidationError.init(
@@ -110,10 +131,8 @@ extension AuraCLI.Pack {
 
         let atmosphere: Atmosphere?
         if  let path: FilePath = self.atmosphere {
-            let file: Ion = .init(bytes: try path.read()[...])
-            let archive: AtmosphereArchive = try file.decode()
-
-            atmosphere = archive.atmosphere
+            let cache: AtmosphereCache? = try Self.cache(for: [path])
+            atmosphere = try await self.atmosphere(at: path, cache: cache)
         } else {
             atmosphere = nil
         }
@@ -142,7 +161,7 @@ extension AuraCLI.Pack {
         print("Successfully packed '\(name)' into '\(output)'!")
     }
 
-    private func run(manifest path: FilePath) throws {
+    private func run(manifest path: FilePath) async throws {
         let manifest: PackagingManifest = try .load(from: path)
         let origin: FilePath.Directory = path.parent ?? "."
         let output: FilePath
@@ -153,8 +172,20 @@ extension AuraCLI.Pack {
             output = origin / "SolarSystem.aura"
         }
 
-        let entries: [AuraArchive.Body] = try manifest.bodies.map {
-            let textures: FilePath.Directory = .init($0.textures)
+        let atmospheres: [FilePath?] = manifest.bodies.map {
+            $0.atmosphere.map {
+                let path: FilePath = .init($0)
+                return path.isAbsolute ? path : origin / path.components
+            }
+        }
+        let cache: AtmosphereCache? = try Self.cache(for: atmospheres.compactMap(\.self))
+
+        var entries: [AuraArchive.Body] = []
+        for (body, path): (PackagingManifest.Body, FilePath?) in zip(
+                manifest.bodies,
+                atmospheres
+            ) {
+            let textures: FilePath.Directory = .init(body.textures)
             let resolved: FilePath.Directory = textures.path.isAbsolute
                 ? textures
                 : origin / textures.components
@@ -163,25 +194,20 @@ extension AuraCLI.Pack {
             let relief: AuraArchive.Cubemap? = try .load(optional: resolved / Self.Relief)
 
             let atmosphere: Atmosphere?
-            if  let path: FilePath = $0.atmosphere.map(FilePath.init(_:)) {
-                let path: FilePath = path.isAbsolute
-                    ? path
-                    : origin / path.components
-
-                let file: Ion = .init(bytes: try path.read()[...])
-                let archive: AtmosphereArchive = try file.decode()
-
-                atmosphere = archive.atmosphere
+            if  let path: FilePath {
+                atmosphere = try await self.atmosphere(at: path, cache: cache)
             } else {
                 atmosphere = nil
             }
 
-            return .init(
-                name: $0.name,
-                spheroid: $0.spheroid,
-                albedo: albedo,
-                relief: relief,
-                atmosphere: atmosphere
+            entries.append(
+                .init(
+                    name: body.name,
+                    spheroid: body.spheroid,
+                    albedo: albedo,
+                    relief: relief,
+                    atmosphere: atmosphere
+                )
             )
         }
 
@@ -197,4 +223,43 @@ extension AuraCLI.Pack {
 }
 extension AuraCLI.Pack {
     private static var Relief: FilePath.Component { "Relief" }
+
+    /// Returns the atmosphere cache, if any of the atmospheres at `paths` is a configuration
+    /// that might need baking, since finding the cache hashes the aura executable.
+    private static func cache(for paths: [FilePath]) throws -> AtmosphereCache? {
+        if  paths.contains(where: { if case "ion"? = $0.extension { true } else { false } }) {
+            try .current()
+        } else {
+            nil
+        }
+    }
+
+    /// Loads the atmosphere at `path`, which is either an .atmo intermediate, or an
+    /// atmospheric (.ion) configuration, which is baked, or reused from `cache`.
+    private func atmosphere(
+        at path: FilePath,
+        cache: AtmosphereCache?
+    ) async throws -> Atmosphere {
+        guard case "ion"? = path.extension else {
+            let file: Ion = .init(bytes: try path.read()[...])
+            let archive: AtmosphereArchive = try file.decode()
+            return archive.atmosphere
+        }
+
+        let body: AtmosphereConfiguration = try .load(from: path)
+        if  let cache: AtmosphereCache {
+            return try await cache.atmosphere(
+                for: body,
+                detail: self.detail,
+                workers: self.threads
+            ).atmosphere
+        } else {
+            print("Baking the atmosphere for '\(body.name)' (detail: \(self.detail))...")
+            return await AtmosphereArchive.bake(
+                body,
+                detail: self.detail,
+                workers: self.threads
+            ).atmosphere
+        }
+    }
 }

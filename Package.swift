@@ -48,6 +48,7 @@ let package: Package = .init(
             dependencies: [
                 .target(name: "Aura"),
                 .product(name: "IonText", package: "swift-ion"),
+                .product(name: "SHA2", package: "h"),
                 .product(name: "SystemIO", package: "swift-io"),
                 .product(name: "System_ArgumentParser", package: "swift-io"),
             ]

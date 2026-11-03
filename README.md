@@ -46,22 +46,36 @@ It supports:
 ### Bake an atmosphere using an Ion configuration file
 
 ```bash
-aura path/to/atmosphere.ion --detail 3 --output Public/Earth/Atmosphere
+aura bake path/to/earth.ion --detail 3 --output Atmospheres/Earth.atmo
 ```
 
-Or bake multiple planetary atmospheres into a single archive:
+Or bake several atmospheres into a directory, one `.atmo` intermediate each:
 
 ```bash
-aura path/to/earth.ion path/to/mars.ion \
-    --detail 3 \
-    --output Public/Atmospheres/atmospheres.aura
+aura bake path/to/earth.ion path/to/mars.ion --detail 3 --output Atmospheres
 ```
 
-### Options
-
-- `<configs>...`: Paths to one or more Ion (`.ion`) atmospheric configuration files.
+- `<configurations>...`: Paths to one or more Ion (`.ion`) atmospheric configuration files.
 - `-d, --detail <level>`: Level of detail (1 to 5, default 3). Higher detail increases table resolution.
-- `-o, --output <path>`: Output file path (e.g. `atmosphere.aura` or `atmospheres.aura`) or directory to write the archive to.
+- `-j, --threads <count>`: Number of threads to bake with, which does not change the output (default: the number of processors).
+- `-o, --output <path>`: An `.atmo` file, or a directory to write one `.atmo` file per configuration to.
+
+### Pack planets into an archive
+
+```bash
+aura pack --manifest path/to/system.ion --output System.aura
+```
+
+A manifest lists bodies, each with a directory of surface textures, its shape, and optionally an atmosphere. The atmosphere can be an `.atmo` intermediate from `aura bake`, or an atmospheric configuration (`.ion`), which `aura pack` bakes itself, at the level of `--detail` (default 3), with `--threads` threads.
+
+### The atmosphere cache
+
+`aura pack` keeps the atmospheres it bakes in a cache, and only bakes an atmosphere again when its configuration, the level of detail, or the aura executable changes, since each bake is stored under a hash of all three. Editing the comments or the formatting of a configuration does not change it. Each time it uses or adds a bake, `aura pack` prints its path.
+
+The cache is `aura/atmospheres` in the user’s cache directory: `$XDG_CACHE_HOME` or `~/.cache`, or `~/Library/Caches` on macOS. The `AURA_CACHE` environment variable moves it to another directory, or turns it off if it is `off`, which is useful in CI, where builds should not depend on earlier ones.
+
+- `aura cache path` prints the directory of the cache, or `off`.
+- `aura cache clear` deletes every bake in it.
 
 ## Configuration format
 
