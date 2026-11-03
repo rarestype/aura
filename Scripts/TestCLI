@@ -114,7 +114,71 @@ if [ ! -s "${TMP_DIR}/${AURA_OUT}" ]; then
 fi
 echo "    Generated ${AURA_OUT} successfully."
 
-# 6. Test CLI validation & error handling
+# 6. Test the atmosphere cache, in a directory of its own
+echo "--> Testing the atmosphere cache..."
+export AURA_CACHE="$TMP_DIR/cache"
+
+fail() {
+    echo "Error: $1" >&2
+    exit 1
+}
+entries() {
+    find "$AURA_CACHE" -name '*.atmo' 2>/dev/null | wc -l
+}
+
+[ "$("$AURA_BIN" cache path)" = "$AURA_CACHE" ] || fail "'aura cache path' does not print AURA_CACHE."
+
+# the same manifest as above, but naming the configuration instead of the baked atmosphere
+sed 's|atmosphere: "Earth.atmo"|atmosphere: "Atmospheres/Earth.ion"|' \
+    "$TMP_DIR/manifest.ion" > "$TMP_DIR/manifest-configuration.ion"
+grep -q 'Atmospheres/Earth.ion' "$TMP_DIR/manifest-configuration.ion" || fail "sed did not apply."
+
+pack() {
+    "$AURA_BIN" pack --manifest "$TMP_DIR/manifest-configuration.ion" --detail 1 --output "$1"
+}
+
+log=$(pack first.aura)
+echo "$log" | grep -q "Baking the atmosphere for 'Earth'" || fail "the first pack did not bake."
+[ "$(entries)" -eq 1 ] || fail "the first pack did not add exactly one bake to the cache."
+cmp -s "$TMP_DIR/first.aura" "$TMP_DIR/${AURA_OUT}" || \
+    fail "packing the configuration differs from packing its bake from 'aura bake'."
+
+log=$(pack second.aura)
+echo "$log" | grep -q "Using the cached atmosphere for 'Earth'" || fail "the second pack did not use the cache."
+cmp -s "$TMP_DIR/first.aura" "$TMP_DIR/second.aura" || fail "the cached bake packs differently."
+
+# a comment does not change the configuration, but a value does
+printf '// a comment\n' >> "$TMP_DIR/Atmospheres/Earth.ion"
+pack third.aura | grep -q "Using the cached atmosphere" || fail "a comment invalidated the cache."
+sed -i.bak 's|mie_g: 0.8e0|mie_g: 0.7e0|' "$TMP_DIR/Atmospheres/Earth.ion"
+pack fourth.aura | grep -q "Baking the atmosphere" || fail "a changed configuration used the cache."
+[ "$(entries)" -eq 2 ] || fail "a changed configuration did not add a second bake."
+
+# an unreadable bake is baked again
+for entry in "$AURA_CACHE"/*.atmo; do
+    printf 'not an atmosphere' > "$entry"
+done
+log=$(pack fifth.aura)
+echo "$log" | grep -q "Cannot read the cached atmosphere" || fail "a corrupt bake was not noticed."
+cmp -s "$TMP_DIR/fourth.aura" "$TMP_DIR/fifth.aura" || fail "rebaking a corrupt bake packs differently."
+[ -z "$(find "$AURA_CACHE" -name '*.partial')" ] || fail "a partial bake was left in the cache."
+
+# with the cache off, nothing is read or written
+cache="$AURA_CACHE"
+export AURA_CACHE=off
+[ "$("$AURA_BIN" cache path)" = "off" ] || fail "'aura cache path' does not print 'off'."
+log=$(pack sixth.aura)
+echo "$log" | grep -q "cache is off" || fail "the pack did not say that the cache is off."
+cmp -s "$TMP_DIR/fourth.aura" "$TMP_DIR/sixth.aura" || fail "baking without the cache packs differently."
+export AURA_CACHE="$cache"
+[ "$(entries)" -eq 2 ] || fail "a pack with the cache off wrote to the cache."
+
+"$AURA_BIN" cache clear
+[ ! -e "$AURA_CACHE" ] || fail "'aura cache clear' did not delete the cache."
+unset AURA_CACHE
+echo "    The atmosphere cache works."
+
+# 7. Test CLI validation & error handling
 echo "--> Testing validation and error handling..."
 
 # Mutual exclusion
