@@ -5,6 +5,8 @@ import SystemIO
 
 #if canImport(Darwin)
 import Darwin
+// `_NSGetExecutablePath`, from `<mach-o/dyld.h>`
+import MachO
 #elseif canImport(Glibc)
 import Glibc
 #elseif canImport(Musl)
